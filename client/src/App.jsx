@@ -5,7 +5,6 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
 import Inventory from "./pages/Inventory";
-// import { Sales, Prescriptions, Staff, Reports } from "./pages/PharmacyPages";
 import Attendance from "./pages/Attendance";
 import { Staff } from "./pages/Staff";
 import { Prescriptions } from "./pages/Prescriptions";
