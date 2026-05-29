@@ -1,5 +1,5 @@
 import express from "express";
-import staffAuth from "../middleware/staffAuth.js";
+import staffAuth from "../middleware/staffauth.js";
 import adminAuth from "../middleware/adminauth.js";
 import attendanceModel from "../models/Attendance.js";
 
@@ -100,12 +100,10 @@ attendanceRouter.put("/clockout", staffAuth(), async (req, res) => {
     );
 
     if (!record) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "No active clock-in found for today",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "No active clock-in found for today",
+      });
     }
 
     res.json({ success: true, message: "Clock out recorded", record });

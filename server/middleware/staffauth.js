@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import userModel from "../models/user.js";
-////////
+////////2
 
 const staffAuth = (requiredPermission = null) => {
   return async (req, res, next) => {
