@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/Sultan";
 
 export default function Attendance() {
   const { apiFetch, staff } = useAuth();

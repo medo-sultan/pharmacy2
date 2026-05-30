@@ -1,7 +1,7 @@
 // Inventory.jsx
 
 import { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/Sultan";
 import { Plus, Search, Package2, AlertTriangle } from "lucide-react";
 
 export default function Inventory() {

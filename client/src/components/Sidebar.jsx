@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/Sultan";
 
 const Icon = ({ d, d2, circle, rect, line, poly }) => (
   <svg

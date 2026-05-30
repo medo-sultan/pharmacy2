@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/Sultan";
 
 const PAGE_LABELS = {
   dashboard: "الرئيسية",

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Eye, EyeOff, Shield, User } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/Sultan";
 
 export default function Login({ onLogin }) {
   const { login, adminLogin } = useAuth();

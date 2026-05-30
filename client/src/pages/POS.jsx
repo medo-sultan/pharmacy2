@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/Sultan";
 
 export default function POS() {
   const { apiFetch } = useAuth();

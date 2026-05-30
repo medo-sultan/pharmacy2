@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/Sultan";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 
