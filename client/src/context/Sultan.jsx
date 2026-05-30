@@ -22,10 +22,25 @@ export function AuthProvider({ children }) {
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.message || "Login failed");
+
     localStorage.setItem("ph_token", data.token);
     localStorage.setItem("ph_staff", JSON.stringify(data.staff));
     setToken(data.token);
     setStaff(data.staff);
+
+    // ✅ تسجيل حضور أوتوماتيك عند دخول الموظف
+    try {
+      await fetch(`${BASE}/attendance/clockin`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${data.token}`,
+          token: data.token,
+        },
+        body: JSON.stringify({}),
+      });
+    } catch (_) {}
+
     return data.staff;
   }, []);
 
@@ -37,6 +52,7 @@ export function AuthProvider({ children }) {
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.message || "Login failed");
+
     localStorage.setItem("ph_token", data.token);
     localStorage.setItem(
       "ph_staff",
@@ -47,7 +63,21 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    // ✅ تسجيل انصراف أوتوماتيك عند خروج الموظف
+    const t = localStorage.getItem("ph_token");
+    try {
+      await fetch(`${BASE}/attendance/clockout`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${t}`,
+          token: t,
+        },
+        body: JSON.stringify({}),
+      });
+    } catch (_) {}
+
     localStorage.removeItem("ph_token");
     localStorage.removeItem("ph_staff");
     setToken(null);
@@ -55,13 +85,12 @@ export function AuthProvider({ children }) {
   }, []);
 
   const apiFetch = useCallback(async (path, options = {}) => {
-    // ✅ اقرأ الـ token من localStorage مباشرة عشان دايماً يكون محدّث
     const t = localStorage.getItem("ph_token");
 
     const headers = {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${t}`, // ✅ للـ staffAuth
-      token: t, // ✅ للـ adminAuth
+      Authorization: `Bearer ${t}`,
+      token: t,
       ...options.headers,
     };
 
@@ -69,7 +98,7 @@ export function AuthProvider({ children }) {
     const data = await res.json();
     if (data.success === false) throw new Error(data.message);
     return data;
-  }, []); // ✅ مفيش dependencies — بيقرأ من localStorage مباشرة
+  }, []);
 
   return (
     <AuthContext.Provider

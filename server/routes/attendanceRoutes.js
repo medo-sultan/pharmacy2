@@ -46,7 +46,6 @@ attendanceRouter.post("/clockin", staffAuth(), async (req, res) => {
   try {
     const staff = req.staff;
 
-    // ✅ Admin مش له clockin
     if (!staff._id) {
       return res
         .status(400)
@@ -55,16 +54,21 @@ attendanceRouter.post("/clockin", staffAuth(), async (req, res) => {
 
     const today = new Date().toLocaleDateString("en-CA");
 
-    const existing = await attendanceModel.findOne({
+    // ✅ بيرفض بس لو في session مفتوحة (دخل ولسه مخرجش)
+    const openSession = await attendanceModel.findOne({
       staffId: staff._id,
       date: today,
+      clockOut: null,
     });
-    if (existing) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Already clocked in today" });
+
+    if (openSession) {
+      return res.status(400).json({
+        success: false,
+        message: "Already clocked in — clock out first",
+      });
     }
 
+    // ✅ record جديد في كل دخول
     const record = await attendanceModel.create({
       staffId: staff._id,
       staffName: staff.name,
@@ -122,8 +126,8 @@ attendanceRouter.get("/my", staffAuth(), async (req, res) => {
 
     const records = await attendanceModel
       .find({ staffId: req.staff._id })
-      .sort({ date: -1 })
-      .limit(30);
+      .sort({ date: -1, clockIn: -1 })
+      .limit(60);
 
     const formatted = records.map((r) => ({
       id: r._id,
