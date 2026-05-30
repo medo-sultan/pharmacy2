@@ -39,6 +39,11 @@ const saleSchema = new mongoose.Schema(
       required: false, // ✅ Admin مش عنده _id في الداتابيز
     },
     notes: { type: String, trim: true },
+    // بيانات التأمين
+    insuranceCompany: { type: String, default: null },
+    insuranceCardNumber: { type: String, default: null },
+    discountPercent: { type: Number, default: 0 },
+    discountAmount: { type: Number, default: 0 },
   },
   { timestamps: true },
 );

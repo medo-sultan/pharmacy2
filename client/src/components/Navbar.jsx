@@ -2,14 +2,14 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/Sultan";
 
 const PAGE_LABELS = {
-  dashboard: "الرئيسية",
-  pos: "نقطة البيع",
-  inventory: "المخزون",
-  sales: "المبيعات",
-  prescriptions: "الوصفات",
-  staff: "الموظفون",
-  reports: "التقارير",
-  attendance: "الحضور",
+  dashboard: { ar: "الرئيسية", icon: "⌂" },
+  pos: { ar: "نقطة البيع", icon: "◈" },
+  inventory: { ar: "المخزون", icon: "▣" },
+  sales: { ar: "المبيعات", icon: "◆" },
+  prescriptions: { ar: "الوصفات", icon: "✦" },
+  staff: { ar: "الموظفون", icon: "◎" },
+  reports: { ar: "التقارير", icon: "◉" },
+  attendance: { ar: "الحضور", icon: "▦" },
 };
 
 export default function Navbar({
@@ -23,13 +23,13 @@ export default function Navbar({
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
-    const s = () => setScrolled(window.scrollY > 10);
+    const s = () => setScrolled(window.scrollY > 8);
     window.addEventListener("scroll", s);
     return () => window.removeEventListener("scroll", s);
   }, []);
 
   useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 60000);
+    const t = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
@@ -38,151 +38,240 @@ export default function Navbar({
     minute: "2-digit",
   });
   const dateStr = time.toLocaleDateString("ar-EG", {
-    weekday: "short",
-    month: "short",
+    weekday: "long",
     day: "numeric",
+    month: "long",
   });
+  const page = PAGE_LABELS[currentPage] || { ar: currentPage, icon: "○" };
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap');
-        @keyframes nav-in { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes breadcrumb-in { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
-        .nexus-nav {
-          font-family: 'Tajawal', sans-serif;
+        :root {
+          --nav-h: 60px;
+          --cyan: #22d3ee;
+          --violet: #a78bfa;
+          --surface: rgba(7,10,18,0.95);
+          --border: rgba(255,255,255,0.07);
+          --text-dim: rgba(148,163,184,0.6);
+          --text-mid: rgba(203,213,225,0.8);
+          --text-bright: #f1f5f9;
+        }
+
+        * { box-sizing: border-box; }
+
+        .nav-root {
+          font-family: 'IBM Plex Sans Arabic', sans-serif;
           position: fixed;
           top: 0; left: 0; right: 0;
-          z-index: 50;
-          animation: nav-in 0.4s ease both;
+          height: var(--nav-h);
+          z-index: 100;
           direction: rtl;
+          transition: all 0.3s ease;
         }
-        .nexus-nav-inner {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          height: 56px;
-          padding: 0 20px;
-          gap: 16px;
-          transition: all 0.4s ease;
+
+        .nav-root.scrolled {
+          background: var(--surface);
+          backdrop-filter: blur(24px) saturate(1.4);
+          border-bottom: 1px solid var(--border);
+          box-shadow: 0 1px 40px rgba(0,0,0,0.5);
         }
-        .nexus-nav.scrolled .nexus-nav-inner {
-          background: rgba(6,8,16,0.92);
-          backdrop-filter: blur(20px);
-          border-bottom: 1px solid rgba(255,255,255,0.055);
-          box-shadow: 0 8px 32px rgba(0,0,0,0.35);
-        }
-        .nexus-nav:not(.scrolled) .nexus-nav-inner {
-          background: linear-gradient(180deg, rgba(6,8,16,0.85), rgba(6,8,16,0.4));
+        .nav-root:not(.scrolled) {
+          background: linear-gradient(180deg, rgba(7,10,18,0.9) 0%, rgba(7,10,18,0.4) 100%);
           backdrop-filter: blur(12px);
           border-bottom: 1px solid rgba(255,255,255,0.03);
         }
 
-        .hamburger-btn {
-          width: 36px; height: 36px;
-          border-radius: 10px;
-          border: 1px solid rgba(255,255,255,0.07);
+        .nav-inner {
+          height: 100%;
+          display: flex;
+          align-items: center;
+          padding: 0 18px;
+          gap: 14px;
+        }
+
+        /* ── Hamburger ── */
+        .hbg {
+          width: 38px; height: 38px;
+          border-radius: 11px;
+          border: 1px solid var(--border);
           background: rgba(255,255,255,0.03);
           cursor: pointer;
           display: flex; flex-direction: column;
           align-items: center; justify-content: center;
-          gap: 4.5px;
-          transition: all 0.2s;
+          gap: 5px;
           flex-shrink: 0;
+          transition: all 0.2s;
         }
-        .hamburger-btn:hover {
-          background: rgba(34,211,238,0.06);
-          border-color: rgba(34,211,238,0.15);
+        .hbg:hover {
+          background: rgba(34,211,238,0.07);
+          border-color: rgba(34,211,238,0.2);
         }
-        .hline {
+        .hbg span {
           display: block;
           height: 1.5px;
           border-radius: 2px;
-          background: rgba(148,163,184,0.7);
-          transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+          background: rgba(148,163,184,0.6);
+          transition: all 0.28s cubic-bezier(0.16,1,0.3,1);
         }
-        .hline-1 { width: 18px; }
-        .hline-2 { width: 13px; }
-        .hline-3 { width: 16px; }
-        .hamburger-btn.open .hline-1 { width: 18px; transform: rotate(45deg) translate(4px,4px); background: #22d3ee; }
-        .hamburger-btn.open .hline-2 { opacity:0; transform: translateX(-6px); }
-        .hamburger-btn.open .hline-3 { width: 18px; transform: rotate(-45deg) translate(4px,-4px); background: #22d3ee; }
+        .hbg span:nth-child(1) { width: 18px; }
+        .hbg span:nth-child(2) { width: 12px; }
+        .hbg span:nth-child(3) { width: 15px; }
+        .hbg.open span { background: var(--cyan); }
+        .hbg.open span:nth-child(1) { width: 18px; transform: rotate(45deg) translate(4.5px, 4.5px); }
+        .hbg.open span:nth-child(2) { width: 0; opacity: 0; }
+        .hbg.open span:nth-child(3) { width: 18px; transform: rotate(-45deg) translate(4.5px, -4.5px); }
 
-        .logo-btn {
-          display: flex; align-items: center; gap: 8px;
-          background: transparent; border: none; cursor: pointer;
-          padding: 0; flex-shrink: 0;
+        /* ── Logo ── */
+        .nav-logo {
+          display: flex; align-items: center; gap: 9px;
+          background: transparent; border: none;
+          cursor: pointer; padding: 0; flex-shrink: 0;
+          text-decoration: none;
         }
-        .logo-hex {
-          width: 30px; height: 30px;
-          border-radius: 8px;
-          background: linear-gradient(135deg, rgba(34,211,238,0.12), rgba(167,139,250,0.08));
-          border: 1px solid rgba(34,211,238,0.18);
+        .logo-mark {
+          width: 32px; height: 32px;
+          border-radius: 9px;
+          background: linear-gradient(135deg, rgba(34,211,238,0.15), rgba(167,139,250,0.1));
+          border: 1px solid rgba(34,211,238,0.22);
           display: flex; align-items: center; justify-content: center;
-          transition: all 0.25s;
+          transition: all 0.2s;
+          position: relative;
+          overflow: hidden;
         }
-        .logo-btn:hover .logo-hex {
-          box-shadow: 0 0 16px rgba(34,211,238,0.2);
-          border-color: rgba(34,211,238,0.3);
+        .logo-mark::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, rgba(34,211,238,0.08), transparent);
+          opacity: 0;
+          transition: opacity 0.2s;
         }
-        .logo-text {
-          font-family: 'Space Mono', monospace;
-          font-size: 11px; font-weight: 700;
-          letter-spacing: 0.22em;
-          color: rgba(255,255,255,0.75);
+        .nav-logo:hover .logo-mark {
+          box-shadow: 0 0 20px rgba(34,211,238,0.18);
+          border-color: rgba(34,211,238,0.35);
+        }
+        .nav-logo:hover .logo-mark::before { opacity: 1; }
+        .logo-wordmark {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 12px; font-weight: 600;
+          letter-spacing: 0.2em;
+          color: rgba(241,245,249,0.7);
           transition: color 0.2s;
         }
-        .logo-btn:hover .logo-text { color: rgba(255,255,255,0.95); }
+        .logo-sub {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 7px;
+          letter-spacing: 0.25em;
+          color: rgba(34,211,238,0.45);
+          display: block;
+          margin-top: -2px;
+        }
+        .nav-logo:hover .logo-wordmark { color: rgba(241,245,249,0.95); }
 
-        .breadcrumb {
+        /* ── Divider ── */
+        .nav-sep {
+          width: 1px; height: 22px;
+          background: linear-gradient(180deg, transparent, rgba(255,255,255,0.1), transparent);
+          flex-shrink: 0;
+        }
+
+        /* ── Breadcrumb ── */
+        .nav-breadcrumb {
+          display: flex; align-items: center; gap: 7px;
+          flex: 1;
+        }
+        .bc-root {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 9px;
+          letter-spacing: 0.18em;
+          color: rgba(255,255,255,0.18);
+          text-transform: uppercase;
+        }
+        .bc-arrow {
+          color: rgba(255,255,255,0.12);
+          font-size: 10px;
+          line-height: 1;
+        }
+        .bc-current {
           display: flex; align-items: center; gap: 6px;
-          animation: breadcrumb-in 0.35s ease both;
-        }
-        .bc-sep { color: rgba(255,255,255,0.15); font-size: 10px; }
-        .bc-root { font-family:'Space Mono',monospace; font-size:9px; letter-spacing:0.15em; color:rgba(255,255,255,0.2); text-transform:uppercase; }
-        .bc-page {
-          font-size: 12px; font-weight: 600;
-          color: rgba(226,232,240,0.8);
           background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 6px;
-          padding: 2px 8px;
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 8px;
+          padding: 4px 10px;
+          animation: bc-pop 0.25s cubic-bezier(0.16,1,0.3,1);
         }
+        @keyframes bc-pop {
+          from { opacity: 0; transform: translateX(-6px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        .bc-icon { font-size: 11px; opacity: 0.6; }
+        .bc-label { color: var(--text-mid); font-size: 12px; font-weight: 600; }
 
-        .clock-badge {
-          font-family: 'Space Mono', monospace;
+        /* ── Clock ── */
+        .nav-clock {
+          text-align: left;
+          flex-shrink: 0;
+        }
+        .clock-time {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 13px; font-weight: 600;
+          color: rgba(34,211,238,0.65);
+          line-height: 1.2;
+          letter-spacing: 0.06em;
+        }
+        .clock-date {
           font-size: 9px;
           color: rgba(255,255,255,0.2);
-          letter-spacing: 0.08em;
-          display: flex; flex-direction: column; align-items: flex-end;
-          line-height: 1.4;
+          line-height: 1.2;
+          white-space: nowrap;
         }
-        .clock-time { color: rgba(34,211,238,0.5); font-size: 10px; font-weight: 700; }
 
-        .user-chip {
+        /* ── User chip ── */
+        .nav-user {
           display: flex; align-items: center; gap: 8px;
-          padding: 4px 10px 4px 6px;
-          border-radius: 20px;
+          padding: 5px 10px 5px 8px;
+          border-radius: 22px;
           background: rgba(255,255,255,0.03);
           border: 1px solid rgba(255,255,255,0.07);
           cursor: default;
           transition: all 0.2s;
+          flex-shrink: 0;
         }
-        .user-chip:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); }
+        .nav-user:hover {
+          background: rgba(255,255,255,0.05);
+          border-color: rgba(255,255,255,0.11);
+        }
         .user-av {
-          width: 22px; height: 22px; border-radius: 7px;
-          background: linear-gradient(135deg, rgba(34,211,238,0.2), rgba(167,139,250,0.2));
+          width: 24px; height: 24px;
+          border-radius: 8px;
+          background: linear-gradient(135deg, rgba(34,211,238,0.22), rgba(167,139,250,0.18));
+          border: 1px solid rgba(34,211,238,0.2);
           display: flex; align-items: center; justify-content: center;
-          font-size: 10px; font-weight: 700; color: #22d3ee;
-          font-family: 'Space Mono', monospace;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10px; font-weight: 600;
+          color: #22d3ee;
+          flex-shrink: 0;
         }
-        .user-name { font-size: 11px; font-weight: 600; color: rgba(226,232,240,0.7); max-width: 80px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .user-name {
+          font-size: 12px; font-weight: 600;
+          color: var(--text-mid);
+          max-width: 90px;
+          overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+        }
+        .user-role-dot {
+          width: 5px; height: 5px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
 
-        .logout-icon-btn {
-          width: 32px; height: 32px;
+        /* ── Logout ── */
+        .nav-logout {
+          width: 34px; height: 34px;
           border-radius: 9px;
-          border: 1px solid rgba(239,68,68,0.12);
+          border: 1px solid rgba(239,68,68,0.1);
           background: transparent;
           color: rgba(239,68,68,0.35);
           cursor: pointer;
@@ -190,109 +279,114 @@ export default function Navbar({
           transition: all 0.2s;
           flex-shrink: 0;
         }
-        .logout-icon-btn:hover {
-          background: rgba(239,68,68,0.07);
-          border-color: rgba(239,68,68,0.25);
+        .nav-logout:hover {
+          background: rgba(239,68,68,0.08);
+          border-color: rgba(239,68,68,0.3);
           color: #f87171;
+          box-shadow: 0 0 14px rgba(239,68,68,0.1);
         }
 
-        .nav-divider { width:1px; height:18px; background:rgba(255,255,255,0.07); flex-shrink:0; }
+        @media (max-width: 600px) {
+          .nav-clock { display: none; }
+          .user-name { display: none; }
+        }
+        @media (max-width: 400px) {
+          .logo-wordmark { display: none; }
+        }
       `}</style>
 
-      <nav className={`nexus-nav ${scrolled ? "scrolled" : ""}`}>
-        <div className="nexus-nav-inner">
-          {/* Right: hamburger + logo */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button
-              className={`hamburger-btn ${sidebarOpen ? "open" : ""}`}
-              onClick={onToggleSidebar}
-              aria-label="Toggle menu"
-            >
-              <span className="hline hline-1" />
-              <span className="hline hline-2" />
-              <span className="hline hline-3" />
-            </button>
+      <nav className={`nav-root ${scrolled ? "scrolled" : ""}`}>
+        <div className="nav-inner">
+          {/* Hamburger */}
+          <button
+            className={`hbg ${sidebarOpen ? "open" : ""}`}
+            onClick={onToggleSidebar}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
 
-            <button
-              className="logo-btn"
-              onClick={() => onNavigate("dashboard")}
-            >
-              <div className="logo-hex">
-                <svg width="14" height="14" viewBox="0 0 28 28">
-                  <polygon
-                    points="14,2 26,8 26,20 14,26 2,20 2,8"
-                    fill="none"
-                    stroke="rgba(34,211,238,0.7)"
-                    strokeWidth="1.5"
-                  />
-                  <text
-                    x="14"
-                    y="18"
-                    textAnchor="middle"
-                    fontFamily="monospace"
-                    fontSize="9"
-                    fontWeight="700"
-                    fill="#22d3ee"
-                  >
-                    S
-                  </text>
-                </svg>
-              </div>
-              <span
-                className="logo-text"
-                style={{ display: window.innerWidth < 480 ? "none" : "block" }}
-              >
-                SULTAN
-              </span>
-            </button>
-          </div>
-
-          {/* Center: breadcrumb */}
-          <div className="breadcrumb" key={currentPage}>
-            <span className="bc-root">pharma</span>
-            <span className="bc-sep">›</span>
-            <span className="bc-page">
-              {PAGE_LABELS[currentPage] || currentPage}
-            </span>
-          </div>
-
-          {/* Left: clock + user + logout */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div
-              className="clock-badge"
-              style={{ display: window.innerWidth < 600 ? "none" : "flex" }}
-            >
-              <span className="clock-time">{timeStr}</span>
-              <span>{dateStr}</span>
-            </div>
-
-            <div className="nav-divider" />
-
-            <div className="user-chip">
-              <div className="user-av">{staff?.name?.charAt(0) || "S"}</div>
-              <span className="user-name">{staff?.name || "Staff"}</span>
-            </div>
-
-            <button
-              className="logout-icon-btn"
-              onClick={logout}
-              title="تسجيل الخروج"
-            >
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              >
-                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
+          {/* Logo */}
+          <button className="nav-logo" onClick={() => onNavigate("dashboard")}>
+            <div className="logo-mark">
+              <svg width="15" height="15" viewBox="0 0 28 28">
+                <polygon
+                  points="14,2 26,8 26,20 14,26 2,20 2,8"
+                  fill="none"
+                  stroke="rgba(34,211,238,0.65)"
+                  strokeWidth="1.4"
+                />
+                <text
+                  x="14"
+                  y="18.5"
+                  textAnchor="middle"
+                  fontFamily="monospace"
+                  fontSize="9"
+                  fontWeight="700"
+                  fill="#22d3ee"
+                >
+                  S
+                </text>
               </svg>
-            </button>
+            </div>
+            <div>
+              <span className="logo-wordmark">SULTAN</span>
+              <span className="logo-sub">PHARMA</span>
+            </div>
+          </button>
+
+          <div className="nav-sep" />
+
+          {/* Breadcrumb */}
+          <div className="nav-breadcrumb">
+            <span className="bc-root">pharma</span>
+            <span className="bc-arrow">›</span>
+            <div className="bc-current" key={currentPage}>
+              <span className="bc-icon">{page.icon}</span>
+              <span className="bc-label">{page.ar}</span>
+            </div>
           </div>
+
+          {/* Clock */}
+          <div className="nav-clock">
+            <div className="clock-time">{timeStr}</div>
+            <div className="clock-date">{dateStr}</div>
+          </div>
+
+          <div className="nav-sep" />
+
+          {/* User */}
+          <div className="nav-user">
+            <div className="user-av">
+              {staff?.name?.charAt(0)?.toUpperCase() || "S"}
+            </div>
+            <span className="user-name">{staff?.name || "Staff"}</span>
+            <div
+              className="user-role-dot"
+              style={{
+                background: staff?.role === "admin" ? "#a78bfa" : "#22d3ee",
+                boxShadow: `0 0 6px ${staff?.role === "admin" ? "#a78bfa55" : "#22d3ee55"}`,
+              }}
+            />
+          </div>
+
+          {/* Logout */}
+          <button className="nav-logout" onClick={logout} title="تسجيل الخروج">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            >
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
         </div>
       </nav>
     </>

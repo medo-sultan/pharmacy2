@@ -16,6 +16,16 @@ export default function POS() {
   const [success, setSuccess] = useState(null);
   const [error, setError] = useState("");
 
+  // Insurance
+  const INSURANCE_COMPANIES = [
+    { id: "qawmi", name: "الشركة القومية للتأمين", discount: 0.75 },
+    { id: "muttahida", name: "المتحدة", discount: 0.85 },
+    { id: "sudapost", name: "سودا بوست", discount: 0.95 },
+  ];
+  const [showInsuranceModal, setShowInsuranceModal] = useState(false);
+  const [insuranceCompany, setInsuranceCompany] = useState(null);
+  const [insuranceCardNumber, setInsuranceCardNumber] = useState("");
+
   useEffect(() => {
     apiFetch("/pharmacy/inventory")
       .then((d) => setMedicines(d.medicines || []))
@@ -74,6 +84,11 @@ export default function POS() {
   const cartItems = Object.values(cart);
   const total = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
 
+  const activeInsurance =
+    paymentMethod === "insurance" ? insuranceCompany : null;
+  const discountAmount = activeInsurance ? total * activeInsurance.discount : 0;
+  const finalTotal = total - discountAmount;
+
   const handleSale = async () => {
     if (cartItems.length === 0) return setError("السلة فارغة");
     setError("");
@@ -88,11 +103,22 @@ export default function POS() {
           })),
           paymentMethod,
           patientName,
+          totalAmount: finalTotal,
+          ...(paymentMethod === "insurance" && insuranceCompany
+            ? {
+                insuranceCompany: insuranceCompany.name,
+                insuranceCardNumber,
+                discountPercent: insuranceCompany.discount * 100,
+                discountAmount,
+              }
+            : {}),
         }),
       });
-      setSuccess({ total, count: cartItems.length });
+      setSuccess({ total: finalTotal, count: cartItems.length });
       setCart({});
       setPatientName("");
+      setInsuranceCompany(null);
+      setInsuranceCardNumber("");
       setTimeout(() => setSuccess(null), 3000);
     } catch (e) {
       setError(e.message || "فشلت العملية");
@@ -120,6 +146,163 @@ export default function POS() {
       `}</style>
 
       <div style={S.layout}>
+        {/* ── Insurance Modal ── */}
+        {showInsuranceModal && (
+          <div style={S.modalOverlay}>
+            <div style={S.modal}>
+              <div style={S.modalHead}>
+                <span style={S.modalTitle}>🛡️ بيانات التأمين</span>
+                <button
+                  onClick={() => setShowInsuranceModal(false)}
+                  style={S.modalClose}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div style={S.modalBody}>
+                <p style={S.fieldLabel}>شركة التأمين</p>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                    marginBottom: 16,
+                  }}
+                >
+                  {INSURANCE_COMPANIES.map((co) => (
+                    <button
+                      key={co.id}
+                      onClick={() => setInsuranceCompany(co)}
+                      style={{
+                        ...S.insOption,
+                        ...(insuranceCompany?.id === co.id
+                          ? S.insOptionActive
+                          : {}),
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span>{co.name}</span>
+                        <span
+                          style={{
+                            background:
+                              insuranceCompany?.id === co.id
+                                ? "rgba(34,211,238,0.15)"
+                                : "rgba(255,255,255,0.06)",
+                            color:
+                              insuranceCompany?.id === co.id
+                                ? "#22d3ee"
+                                : "rgba(255,255,255,0.4)",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: "2px 8px",
+                            borderRadius: 20,
+                          }}
+                        >
+                          خصم {co.discount * 100}%
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <p style={S.fieldLabel}>رقم بطاقة التأمين</p>
+                <input
+                  style={{ ...S.patientInput, marginBottom: 16 }}
+                  placeholder="أدخل رقم البطاقة..."
+                  value={insuranceCardNumber}
+                  onChange={(e) => setInsuranceCardNumber(e.target.value)}
+                  dir="ltr"
+                />
+
+                {insuranceCompany && (
+                  <div style={S.insPreview}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <span
+                        style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}
+                      >
+                        الإجمالي قبل الخصم
+                      </span>
+                      <span style={{ color: "#cbd5e1", fontSize: 12 }}>
+                        {total.toFixed(2)} ج
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <span
+                        style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}
+                      >
+                        نسبة الخصم
+                      </span>
+                      <span style={{ color: "#f59e0b", fontSize: 12 }}>
+                        - {insuranceCompany.discount * 100}%
+                      </span>
+                    </div>
+                    <div style={S.insDivider} />
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: "rgba(255,255,255,0.6)",
+                          fontSize: 13,
+                          fontWeight: 600,
+                        }}
+                      >
+                        المبلغ المتبقي
+                      </span>
+                      <span
+                        style={{
+                          color: "#22d3ee",
+                          fontSize: 16,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {(total - total * insuranceCompany.discount).toFixed(2)}{" "}
+                        ج
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    if (!insuranceCompany) return;
+                    setShowInsuranceModal(false);
+                  }}
+                  style={{
+                    ...S.sellBtn,
+                    opacity: insuranceCompany ? 1 : 0.35,
+                    marginTop: 4,
+                  }}
+                  disabled={!insuranceCompany}
+                >
+                  ✔ تأكيد التأمين
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* ── Left Panel ── */}
         <div style={S.leftPanel}>
           {/* Header */}
@@ -329,7 +512,10 @@ export default function POS() {
                 <button
                   key={v}
                   className="pay-opt"
-                  onClick={() => setPaymentMethod(v)}
+                  onClick={() => {
+                    setPaymentMethod(v);
+                    if (v === "insurance") setShowInsuranceModal(true);
+                  }}
                   style={{
                     ...S.payOpt,
                     ...(paymentMethod === v ? S.payOptActive : {}),
@@ -340,7 +526,91 @@ export default function POS() {
               ))}
             </div>
 
+            {/* Insurance summary strip */}
+            {paymentMethod === "insurance" && insuranceCompany && (
+              <div
+                style={S.insStrip}
+                onClick={() => setShowInsuranceModal(true)}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span
+                    style={{ color: "#22d3ee", fontSize: 11, fontWeight: 600 }}
+                  >
+                    🛡️ {insuranceCompany.name}
+                  </span>
+                  <span style={{ color: "#f59e0b", fontSize: 11 }}>
+                    خصم {insuranceCompany.discount * 100}%
+                  </span>
+                </div>
+                {insuranceCardNumber && (
+                  <span
+                    style={{ color: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                  >
+                    بطاقة: {insuranceCardNumber}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {paymentMethod === "insurance" && !insuranceCompany && (
+              <button
+                onClick={() => setShowInsuranceModal(true)}
+                style={S.insEmptyBtn}
+              >
+                ⚠ أدخل بيانات التأمين
+              </button>
+            )}
+
             <div style={S.divider} />
+
+            {activeInsurance && (
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "baseline",
+                  }}
+                >
+                  <span
+                    style={{ color: "rgba(255,255,255,0.25)", fontSize: 11 }}
+                  >
+                    قبل الخصم
+                  </span>
+                  <span
+                    style={{
+                      color: "rgba(255,255,255,0.35)",
+                      fontSize: 14,
+                      textDecoration: "line-through",
+                    }}
+                  >
+                    {total.toFixed(2)} ج
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "baseline",
+                  }}
+                >
+                  <span style={{ color: "rgba(245,158,11,0.8)", fontSize: 11 }}>
+                    خصم التأمين {activeInsurance.discount * 100}%
+                  </span>
+                  <span
+                    style={{ color: "#f59e0b", fontSize: 13, fontWeight: 600 }}
+                  >
+                    - {discountAmount.toFixed(2)} ج
+                  </span>
+                </div>
+              </>
+            )}
 
             <div
               style={{
@@ -350,9 +620,16 @@ export default function POS() {
               }}
             >
               <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 12 }}>
-                الإجمالي
+                {activeInsurance ? "المبلغ المتبقي" : "الإجمالي"}
               </span>
-              <span style={S.totalVal}>{total.toFixed(2)} ج</span>
+              <span
+                style={{
+                  ...S.totalVal,
+                  color: activeInsurance ? "#22d3ee" : "#f1f5f9",
+                }}
+              >
+                {finalTotal.toFixed(2)} ج
+              </span>
             </div>
 
             {error && <div style={S.errorBox}>⚠ {error}</div>}
@@ -712,5 +989,114 @@ const S = {
     cursor: "pointer",
     transition: "all 0.2s",
     letterSpacing: "0.03em",
+  },
+  // Insurance styles
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.7)",
+    backdropFilter: "blur(4px)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+  },
+  modal: {
+    background: "#0d1526",
+    border: "1px solid rgba(34,211,238,0.15)",
+    borderRadius: 18,
+    width: 360,
+    maxWidth: "90vw",
+    boxShadow: "0 24px 60px rgba(0,0,0,0.6)",
+    overflow: "hidden",
+  },
+  modalHead: {
+    padding: "16px 20px",
+    borderBottom: "1px solid rgba(255,255,255,0.06)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  modalTitle: {
+    color: "#f1f5f9",
+    fontSize: 15,
+    fontWeight: 700,
+    fontFamily: "'Sora', sans-serif",
+  },
+  modalClose: {
+    background: "transparent",
+    border: "none",
+    color: "rgba(255,255,255,0.3)",
+    fontSize: 22,
+    cursor: "pointer",
+    lineHeight: 1,
+    padding: 0,
+    fontFamily: "'Sora', sans-serif",
+  },
+  modalBody: {
+    padding: "18px 20px 20px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    fontFamily: "'Sora', sans-serif",
+  },
+  fieldLabel: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: 11,
+    fontWeight: 600,
+    textTransform: "uppercase",
+    letterSpacing: "0.06em",
+    margin: "0 0 6px",
+  },
+  insOption: {
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderRadius: 10,
+    padding: "10px 14px",
+    color: "#cbd5e1",
+    fontSize: 13,
+    fontFamily: "'Sora', sans-serif",
+    cursor: "pointer",
+    textAlign: "right",
+    transition: "all 0.15s",
+  },
+  insOptionActive: {
+    border: "1px solid rgba(34,211,238,0.35)",
+    background: "rgba(34,211,238,0.07)",
+    color: "#f1f5f9",
+  },
+  insPreview: {
+    background: "rgba(34,211,238,0.04)",
+    border: "1px solid rgba(34,211,238,0.12)",
+    borderRadius: 10,
+    padding: "12px 14px",
+    marginBottom: 8,
+  },
+  insDivider: {
+    height: 1,
+    background: "rgba(255,255,255,0.06)",
+    margin: "8px 0",
+  },
+  insStrip: {
+    background: "rgba(34,211,238,0.05)",
+    border: "1px solid rgba(34,211,238,0.15)",
+    borderRadius: 8,
+    padding: "8px 12px",
+    cursor: "pointer",
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+  },
+  insEmptyBtn: {
+    background: "rgba(245,158,11,0.06)",
+    border: "1px solid rgba(245,158,11,0.2)",
+    borderRadius: 8,
+    padding: "8px 12px",
+    color: "#f59e0b",
+    fontSize: 11,
+    fontFamily: "'Sora', sans-serif",
+    cursor: "pointer",
+    width: "100%",
+    textAlign: "center",
   },
 };

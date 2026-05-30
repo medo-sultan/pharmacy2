@@ -376,8 +376,18 @@ const makeSale = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { items, paymentMethod, patientName, prescriptionId, notes } =
-      req.body;
+    const {
+      items,
+      paymentMethod,
+      patientName,
+      prescriptionId,
+      notes,
+      // بيانات التأمين
+      insuranceCompany,
+      insuranceCardNumber,
+      discountPercent,
+      discountAmount,
+    } = req.body;
 
     if (!items || items.length === 0) {
       await session.abortTransaction();
@@ -386,7 +396,7 @@ const makeSale = async (req, res) => {
         .json({ success: false, message: "No items provided" });
     }
 
-    let totalAmount = 0;
+    let rawTotal = 0;
     const enrichedItems = [];
 
     for (const item of items) {
@@ -417,7 +427,7 @@ const makeSale = async (req, res) => {
       }
 
       const subtotal = medicine.price * item.quantity;
-      totalAmount += subtotal;
+      rawTotal += subtotal;
 
       enrichedItems.push({
         medicineId: medicine._id,
@@ -438,6 +448,13 @@ const makeSale = async (req, res) => {
       );
     }
 
+    // حساب المبلغ النهائي — لو تأمين اطرح الخصم
+    const isInsurance = paymentMethod === "insurance" && discountPercent > 0;
+    const appliedDiscount = isInsurance
+      ? parseFloat(discountAmount) || rawTotal * (discountPercent / 100)
+      : 0;
+    const totalAmount = parseFloat((rawTotal - appliedDiscount).toFixed(2));
+
     const sale = await saleModel.create(
       [
         {
@@ -448,6 +465,13 @@ const makeSale = async (req, res) => {
           prescriptionId: prescriptionId || null,
           servedBy: req.staff._id || "000000000000000000000000",
           notes,
+          // حفظ بيانات التأمين في السجل
+          ...(isInsurance && {
+            insuranceCompany,
+            insuranceCardNumber,
+            discountPercent,
+            discountAmount: appliedDiscount,
+          }),
         },
       ],
       { session },
@@ -460,8 +484,11 @@ const makeSale = async (req, res) => {
       "MAKE_SALE",
       {
         saleId: sale[0]._id,
+        rawTotal,
+        discountAmount: appliedDiscount,
         totalAmount,
         itemsCount: enrichedItems.length,
+        ...(isInsurance && { insuranceCompany, discountPercent }),
       },
       req.ip,
     );

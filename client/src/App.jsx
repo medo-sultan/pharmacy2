@@ -14,15 +14,22 @@ import { Sales } from "./pages/Sales";
 // ── Inner app (has auth context) ──────────────
 function PharmacyApp() {
   const { token, staff } = useAuth();
-  const [page, setPage] = useState("dashboard");
+  const [page, setPage] = useState(
+    () => localStorage.getItem("currentPage") || "dashboard",
+  );
   const isAdmin = staff?.isAdmin || staff?.role === "admin";
 
-  if (!token) return <Login onLogin={() => setPage("dashboard")} />;
+  const navigate = (p) => {
+    localStorage.setItem("currentPage", p);
+    setPage(p);
+  };
+
+  if (!token) return <Login onLogin={() => navigate("dashboard")} />;
 
   const renderPage = () => {
     switch (page) {
       case "dashboard":
-        return <Dashboard onNavigate={setPage} />;
+        return <Dashboard onNavigate={navigate} />;
       case "pos":
         return <POS />;
       case "inventory":
@@ -32,18 +39,18 @@ function PharmacyApp() {
       case "prescriptions":
         return <Prescriptions />;
       case "staff":
-        return isAdmin ? <Staff /> : <Dashboard onNavigate={setPage} />;
+        return isAdmin ? <Staff /> : <Dashboard onNavigate={navigate} />;
       case "reports":
-        return isAdmin ? <Reports /> : <Dashboard onNavigate={setPage} />;
+        return isAdmin ? <Reports /> : <Dashboard onNavigate={navigate} />;
       case "attendance":
-        return isAdmin ? <Attendance /> : <Dashboard onNavigate={setPage} />;
+        return isAdmin ? <Attendance /> : <Dashboard onNavigate={navigate} />;
       default:
-        return <Dashboard onNavigate={setPage} />;
+        return <Dashboard onNavigate={navigate} />;
     }
   };
 
   return (
-    <MainLayout currentPage={page} onNavigate={setPage}>
+    <MainLayout currentPage={page} onNavigate={navigate}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 20px" }}>
         {renderPage()}
       </div>
