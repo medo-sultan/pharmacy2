@@ -13,8 +13,22 @@ const { default: pharmacyRouter } = await import("./routes/pharmacyRoutes.js");
 const { default: attendanceRouter } =
   await import("./routes/attendanceRoutes.js");
 
-connectDB();
 connectCloudinary();
+
+// ── Middleware: ضمان اتصال DB قبل أي request ──────────────
+// ده الحل الأساسي على Vercel Serverless
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("DB connection failed:", err.message);
+    res.status(503).json({
+      success: false,
+      message: "قاعدة البيانات غير متاحة حالياً، حاول مجدداً",
+    });
+  }
+});
 
 app.use(
   cors({
@@ -24,7 +38,7 @@ app.use(
   }),
 );
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // 🔥 مهم جدًا
+app.use(express.urlencoded({ extended: true }));
 
 app.get("/", (req, res) => res.json({ message: "API running..." }));
 
