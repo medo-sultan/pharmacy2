@@ -14,13 +14,14 @@ const medicineSchema = new mongoose.Schema(
     category: {
       type: String,
       enum: [
+        "general",
         "antibiotic",
         "painkiller",
         "vitamin",
-        "chronic", // أمراض مزمنة
-        "dermatology", // جلدية
-        "cardiology", // قلب
-        "pediatric", // أطفال
+        "chronic",
+        "dermatology",
+        "cardiology",
+        "pediatric",
         "other",
       ],
       default: "other",
