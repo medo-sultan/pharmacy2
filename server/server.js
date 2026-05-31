@@ -10,6 +10,7 @@ const { default: connectDB } = await import("./config/db.js");
 const { default: connectCloudinary } = await import("./config/cloudinary.js");
 const { default: userRoutes } = await import("./routes/userRoutes.js");
 const { default: pharmacyRouter } = await import("./routes/pharmacyRoutes.js");
+const { default: barcodeRouter } = await import("./routes/barcodeRoutes.js");
 const { default: attendanceRouter } =
   await import("./routes/attendanceRoutes.js");
 
@@ -45,6 +46,7 @@ app.get("/", (req, res) => res.json({ message: "API running..." }));
 app.use("/api/user", userRoutes);
 app.use("/api/pharmacy", pharmacyRouter);
 app.use("/api/attendance", attendanceRouter);
+app.use("/api/barcode", barcodeRouter);
 
 app.use((req, res) => res.status(404).json({ message: "Route not found" }));
 

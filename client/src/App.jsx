@@ -11,6 +11,7 @@ import { Prescriptions } from "./pages/Prescriptions";
 import { Reports } from "./pages/Reports";
 import { Sales } from "./pages/Sales";
 import BackArrow from "./components/BackArrow";
+import Barcode from "./components/Barcode";
 
 // ── Inner app (has auth context) ──────────────
 function PharmacyApp() {
@@ -33,6 +34,8 @@ function PharmacyApp() {
         return <Dashboard onNavigate={navigate} />;
       case "pos":
         return <POS />;
+      case "barcode":
+        return <Barcode />;
       case "inventory":
         return <Inventory />;
       case "sales":
