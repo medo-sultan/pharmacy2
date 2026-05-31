@@ -9,8 +9,7 @@ import {
 const AuthContext = createContext(null);
 const BASE = import.meta.env.VITE_API_URL;
 
-const SESSION_DURATION = 2 * 60 * 1000; // 2 دقيقة
-
+const SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 ساعات
 // ── helpers ──
 const saveSession = (token, staff) => {
   localStorage.setItem("ph_token", token);
