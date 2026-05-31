@@ -10,6 +10,7 @@ import { Staff } from "./pages/Staff";
 import { Prescriptions } from "./pages/Prescriptions";
 import { Reports } from "./pages/Reports";
 import { Sales } from "./pages/Sales";
+import BackArrow from "./components/BackArrow";
 
 // ── Inner app (has auth context) ──────────────
 function PharmacyApp() {
@@ -52,6 +53,7 @@ function PharmacyApp() {
   return (
     <MainLayout currentPage={page} onNavigate={navigate}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 20px" }}>
+        {page !== "dashboard" && <BackArrow onNavigate={navigate} />}
         {renderPage()}
       </div>
     </MainLayout>
