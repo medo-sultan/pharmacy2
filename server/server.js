@@ -10,7 +10,7 @@ const { default: connectDB } = await import("./config/db.js");
 const { default: connectCloudinary } = await import("./config/cloudinary.js");
 const { default: userRoutes } = await import("./routes/userRoutes.js");
 const { default: pharmacyRouter } = await import("./routes/pharmacyRoutes.js");
-const { default: barcodeRouter } = await import("./routes/barcodeRoutes.js");
+const { default: barcodeRouter } = await import("./routes/Barcoderoutes.js");
 const { default: attendanceRouter } =
   await import("./routes/attendanceRoutes.js");
 
