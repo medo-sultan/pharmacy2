@@ -50,10 +50,10 @@ export default function Navbar({
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
         :root {
-          --nav-h: 60px;
+          --nav-h: 56px;
           --cyan: #22d3ee;
           --violet: #a78bfa;
-          --surface: rgba(7,10,18,0.95);
+          --surface: rgba(7,10,18,0.97);
           --border: rgba(255,255,255,0.07);
           --text-dim: rgba(148,163,184,0.6);
           --text-mid: rgba(203,213,225,0.8);
@@ -79,7 +79,7 @@ export default function Navbar({
           box-shadow: 0 1px 40px rgba(0,0,0,0.5);
         }
         .nav-root:not(.scrolled) {
-          background: linear-gradient(180deg, rgba(7,10,18,0.9) 0%, rgba(7,10,18,0.4) 100%);
+          background: linear-gradient(180deg, rgba(7,10,18,0.92) 0%, rgba(7,10,18,0.5) 100%);
           backdrop-filter: blur(12px);
           border-bottom: 1px solid rgba(255,255,255,0.03);
         }
@@ -88,14 +88,14 @@ export default function Navbar({
           height: 100%;
           display: flex;
           align-items: center;
-          padding: 0 18px;
-          gap: 14px;
+          padding: 0 12px;
+          gap: 8px;
         }
 
         /* ── Hamburger ── */
         .hbg {
-          width: 38px; height: 38px;
-          border-radius: 11px;
+          width: 36px; height: 36px;
+          border-radius: 10px;
           border: 1px solid var(--border);
           background: rgba(255,255,255,0.03);
           cursor: pointer;
@@ -104,8 +104,9 @@ export default function Navbar({
           gap: 5px;
           flex-shrink: 0;
           transition: all 0.2s;
+          -webkit-tap-highlight-color: transparent;
         }
-        .hbg:hover {
+        .hbg:hover, .hbg:active {
           background: rgba(34,211,238,0.07);
           border-color: rgba(34,211,238,0.2);
         }
@@ -116,99 +117,85 @@ export default function Navbar({
           background: rgba(148,163,184,0.6);
           transition: all 0.28s cubic-bezier(0.16,1,0.3,1);
         }
-        .hbg span:nth-child(1) { width: 18px; }
-        .hbg span:nth-child(2) { width: 12px; }
-        .hbg span:nth-child(3) { width: 15px; }
+        .hbg span:nth-child(1) { width: 16px; }
+        .hbg span:nth-child(2) { width: 11px; }
+        .hbg span:nth-child(3) { width: 14px; }
         .hbg.open span { background: var(--cyan); }
-        .hbg.open span:nth-child(1) { width: 18px; transform: rotate(45deg) translate(4.5px, 4.5px); }
+        .hbg.open span:nth-child(1) { width: 16px; transform: rotate(45deg) translate(4px, 4px); }
         .hbg.open span:nth-child(2) { width: 0; opacity: 0; }
-        .hbg.open span:nth-child(3) { width: 18px; transform: rotate(-45deg) translate(4.5px, -4.5px); }
+        .hbg.open span:nth-child(3) { width: 16px; transform: rotate(-45deg) translate(4px, -4px); }
 
         /* ── Logo ── */
         .nav-logo {
-          display: flex; align-items: center; gap: 9px;
+          display: flex; align-items: center; gap: 7px;
           background: transparent; border: none;
           cursor: pointer; padding: 0; flex-shrink: 0;
-          text-decoration: none;
+          -webkit-tap-highlight-color: transparent;
         }
         .logo-mark {
-          width: 32px; height: 32px;
-          border-radius: 9px;
+          width: 30px; height: 30px;
+          border-radius: 8px;
           background: linear-gradient(135deg, rgba(34,211,238,0.15), rgba(167,139,250,0.1));
           border: 1px solid rgba(34,211,238,0.22);
           display: flex; align-items: center; justify-content: center;
-          transition: all 0.2s;
-          position: relative;
-          overflow: hidden;
         }
-        .logo-mark::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(135deg, rgba(34,211,238,0.08), transparent);
-          opacity: 0;
-          transition: opacity 0.2s;
-        }
-        .nav-logo:hover .logo-mark {
-          box-shadow: 0 0 20px rgba(34,211,238,0.18);
-          border-color: rgba(34,211,238,0.35);
-        }
-        .nav-logo:hover .logo-mark::before { opacity: 1; }
         .logo-wordmark {
           font-family: 'JetBrains Mono', monospace;
-          font-size: 12px; font-weight: 600;
-          letter-spacing: 0.2em;
+          font-size: 11px; font-weight: 600;
+          letter-spacing: 0.18em;
           color: rgba(241,245,249,0.7);
-          transition: color 0.2s;
         }
         .logo-sub {
           font-family: 'JetBrains Mono', monospace;
-          font-size: 7px;
-          letter-spacing: 0.25em;
+          font-size: 6px;
+          letter-spacing: 0.22em;
           color: rgba(34,211,238,0.45);
           display: block;
           margin-top: -2px;
         }
-        .nav-logo:hover .logo-wordmark { color: rgba(241,245,249,0.95); }
 
         /* ── Divider ── */
         .nav-sep {
-          width: 1px; height: 22px;
+          width: 1px; height: 18px;
           background: linear-gradient(180deg, transparent, rgba(255,255,255,0.1), transparent);
           flex-shrink: 0;
         }
 
         /* ── Breadcrumb ── */
         .nav-breadcrumb {
-          display: flex; align-items: center; gap: 7px;
+          display: flex; align-items: center; gap: 6px;
           flex: 1;
+          min-width: 0;
         }
         .bc-root {
           font-family: 'JetBrains Mono', monospace;
-          font-size: 9px;
-          letter-spacing: 0.18em;
-          color: rgba(255,255,255,0.18);
+          font-size: 8px;
+          letter-spacing: 0.15em;
+          color: rgba(255,255,255,0.15);
           text-transform: uppercase;
+          flex-shrink: 0;
         }
         .bc-arrow {
-          color: rgba(255,255,255,0.12);
-          font-size: 10px;
-          line-height: 1;
+          color: rgba(255,255,255,0.1);
+          font-size: 9px;
+          flex-shrink: 0;
         }
         .bc-current {
-          display: flex; align-items: center; gap: 6px;
+          display: flex; align-items: center; gap: 5px;
           background: rgba(255,255,255,0.04);
           border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 8px;
-          padding: 4px 10px;
+          border-radius: 7px;
+          padding: 3px 8px;
+          min-width: 0;
+          overflow: hidden;
           animation: bc-pop 0.25s cubic-bezier(0.16,1,0.3,1);
         }
         @keyframes bc-pop {
-          from { opacity: 0; transform: translateX(-6px); }
+          from { opacity: 0; transform: translateX(-4px); }
           to   { opacity: 1; transform: translateX(0); }
         }
-        .bc-icon { font-size: 11px; opacity: 0.6; }
-        .bc-label { color: var(--text-mid); font-size: 12px; font-weight: 600; }
+        .bc-icon { font-size: 10px; opacity: 0.6; flex-shrink: 0; }
+        .bc-label { color: var(--text-mid); font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* ── Clock ── */
         .nav-clock {
@@ -217,48 +204,42 @@ export default function Navbar({
         }
         .clock-time {
           font-family: 'JetBrains Mono', monospace;
-          font-size: 13px; font-weight: 600;
+          font-size: 12px; font-weight: 600;
           color: rgba(34,211,238,0.65);
           line-height: 1.2;
-          letter-spacing: 0.06em;
+          letter-spacing: 0.04em;
         }
         .clock-date {
-          font-size: 9px;
-          color: rgba(255,255,255,0.2);
+          font-size: 8px;
+          color: rgba(255,255,255,0.18);
           line-height: 1.2;
           white-space: nowrap;
         }
 
         /* ── User chip ── */
         .nav-user {
-          display: flex; align-items: center; gap: 8px;
-          padding: 5px 10px 5px 8px;
-          border-radius: 22px;
+          display: flex; align-items: center; gap: 6px;
+          padding: 4px 8px 4px 6px;
+          border-radius: 20px;
           background: rgba(255,255,255,0.03);
           border: 1px solid rgba(255,255,255,0.07);
-          cursor: default;
-          transition: all 0.2s;
           flex-shrink: 0;
         }
-        .nav-user:hover {
-          background: rgba(255,255,255,0.05);
-          border-color: rgba(255,255,255,0.11);
-        }
         .user-av {
-          width: 24px; height: 24px;
-          border-radius: 8px;
+          width: 22px; height: 22px;
+          border-radius: 7px;
           background: linear-gradient(135deg, rgba(34,211,238,0.22), rgba(167,139,250,0.18));
           border: 1px solid rgba(34,211,238,0.2);
           display: flex; align-items: center; justify-content: center;
           font-family: 'JetBrains Mono', monospace;
-          font-size: 10px; font-weight: 600;
+          font-size: 9px; font-weight: 600;
           color: #22d3ee;
           flex-shrink: 0;
         }
         .user-name {
-          font-size: 12px; font-weight: 600;
+          font-size: 11px; font-weight: 600;
           color: var(--text-mid);
-          max-width: 90px;
+          max-width: 70px;
           overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
         }
         .user-role-dot {
@@ -269,8 +250,8 @@ export default function Navbar({
 
         /* ── Logout ── */
         .nav-logout {
-          width: 34px; height: 34px;
-          border-radius: 9px;
+          width: 32px; height: 32px;
+          border-radius: 8px;
           border: 1px solid rgba(239,68,68,0.1);
           background: transparent;
           color: rgba(239,68,68,0.35);
@@ -278,19 +259,27 @@ export default function Navbar({
           display: flex; align-items: center; justify-content: center;
           transition: all 0.2s;
           flex-shrink: 0;
+          -webkit-tap-highlight-color: transparent;
         }
-        .nav-logout:hover {
+        .nav-logout:hover, .nav-logout:active {
           background: rgba(239,68,68,0.08);
           border-color: rgba(239,68,68,0.3);
           color: #f87171;
-          box-shadow: 0 0 14px rgba(239,68,68,0.1);
         }
 
-        @media (max-width: 600px) {
+        /* ── Responsive ── */
+        @media (max-width: 640px) {
           .nav-clock { display: none; }
-          .user-name { display: none; }
+          .bc-root { display: none; }
+          .bc-arrow { display: none; }
+          .nav-sep { display: none; }
         }
-        @media (max-width: 400px) {
+        @media (max-width: 480px) {
+          .user-name { display: none; }
+          .user-role-dot { display: none; }
+          .nav-inner { padding: 0 10px; gap: 6px; }
+        }
+        @media (max-width: 360px) {
           .logo-wordmark { display: none; }
         }
       `}</style>
@@ -310,7 +299,7 @@ export default function Navbar({
           {/* Logo */}
           <button className="nav-logo" onClick={() => onNavigate("dashboard")}>
             <div className="logo-mark">
-              <svg width="15" height="15" viewBox="0 0 28 28">
+              <svg width="14" height="14" viewBox="0 0 28 28">
                 <polygon
                   points="14,2 26,8 26,20 14,26 2,20 2,8"
                   fill="none"
@@ -366,7 +355,7 @@ export default function Navbar({
               className="user-role-dot"
               style={{
                 background: staff?.role === "admin" ? "#a78bfa" : "#22d3ee",
-                boxShadow: `0 0 6px ${staff?.role === "admin" ? "#a78bfa55" : "#22d3ee55"}`,
+                boxShadow: `0 0 5px ${staff?.role === "admin" ? "#a78bfa55" : "#22d3ee55"}`,
               }}
             />
           </div>
@@ -374,8 +363,8 @@ export default function Navbar({
           {/* Logout */}
           <button className="nav-logout" onClick={logout} title="تسجيل الخروج">
             <svg
-              width="14"
-              height="14"
+              width="13"
+              height="13"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"

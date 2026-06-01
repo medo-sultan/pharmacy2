@@ -140,9 +140,10 @@ export default function Sidebar({ open, onClose, currentPage, onNavigate }) {
 
         .sb-overlay {
           position: fixed; inset: 0; z-index: 99;
-          background: rgba(0,0,0,0.6);
-          backdrop-filter: blur(3px);
+          background: rgba(0,0,0,0.65);
+          backdrop-filter: blur(4px);
           animation: ov-in 0.2s ease;
+          -webkit-tap-highlight-color: transparent;
         }
         @keyframes ov-in { from{opacity:0} to{opacity:1} }
 
@@ -151,21 +152,24 @@ export default function Sidebar({ open, onClose, currentPage, onNavigate }) {
           position: fixed;
           top: 0; right: 0; bottom: 0;
           z-index: 100;
-          width: 256px;
+          /* Wider on mobile for easier touch */
+          width: min(280px, 85vw);
           background: #06080f;
           border-left: 1px solid rgba(255,255,255,0.07);
           display: flex; flex-direction: column;
           transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
           direction: rtl;
-          box-shadow: -20px 0 60px rgba(0,0,0,0.5);
+          box-shadow: -20px 0 60px rgba(0,0,0,0.6);
+          /* Safe area for notched phones */
+          padding-bottom: env(safe-area-inset-bottom, 0px);
         }
         .sb-root.open  { transform: translateX(0); }
         .sb-root.closed { transform: translateX(100%); }
 
         /* Header */
         .sb-header {
-          height: 60px;
-          padding: 0 16px;
+          height: 56px;
+          padding: 0 14px;
           display: flex; align-items: center; justify-content: space-between;
           border-bottom: 1px solid rgba(255,255,255,0.06);
           flex-shrink: 0;
@@ -196,30 +200,32 @@ export default function Sidebar({ open, onClose, currentPage, onNavigate }) {
           display: block;
         }
         .sb-close {
-          width: 28px; height: 28px;
-          border-radius: 8px;
+          /* Large touch target */
+          width: 36px; height: 36px;
+          border-radius: 10px;
           border: 1px solid rgba(255,255,255,0.07);
           background: rgba(255,255,255,0.03);
           color: rgba(255,255,255,0.3);
           cursor: pointer;
           display: flex; align-items: center; justify-content: center;
           transition: all 0.15s;
+          -webkit-tap-highlight-color: transparent;
         }
-        .sb-close:hover {
-          background: rgba(255,255,255,0.06);
-          color: rgba(255,255,255,0.6);
-          border-color: rgba(255,255,255,0.12);
+        .sb-close:active {
+          background: rgba(255,255,255,0.08);
+          color: rgba(255,255,255,0.7);
         }
 
         /* Nav */
         .sb-nav {
           flex: 1; overflow-y: auto;
-          padding: 12px 10px;
+          padding: 10px 8px;
           scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
         }
         .sb-nav::-webkit-scrollbar { display: none; }
 
-        .sb-group { margin-bottom: 20px; }
+        .sb-group { margin-bottom: 18px; }
         .sb-group-label {
           font-family: 'JetBrains Mono', monospace;
           font-size: 8px; font-weight: 600;
@@ -227,17 +233,18 @@ export default function Sidebar({ open, onClose, currentPage, onNavigate }) {
           text-transform: uppercase;
           color: rgba(255,255,255,0.13);
           padding: 0 10px;
-          margin-bottom: 6px;
+          margin-bottom: 4px;
           display: block;
         }
-        .sb-group-items { display: flex; flex-direction: column; gap: 2px; }
+        .sb-group-items { display: flex; flex-direction: column; gap: 1px; }
 
-        /* Nav item */
+        /* Nav item — large touch target */
         .sb-item {
           position: relative;
           width: 100%;
           display: flex; align-items: center; gap: 10px;
-          padding: 9px 10px;
+          /* min 44px height for accessibility */
+          padding: 11px 10px;
           border-radius: 10px;
           border: 1px solid transparent;
           background: transparent;
@@ -247,28 +254,23 @@ export default function Sidebar({ open, onClose, currentPage, onNavigate }) {
           color: rgba(148,163,184,0.55);
           direction: rtl; text-align: right;
           transition: all 0.15s ease;
+          -webkit-tap-highlight-color: transparent;
         }
-        .sb-item:hover {
-          background: rgba(255,255,255,0.035);
-          border-color: rgba(255,255,255,0.07);
-          color: rgba(203,213,225,0.85);
-        }
-        .sb-item:hover .sb-icon {
-          background: rgba(34,211,238,0.08);
-          border-color: rgba(34,211,238,0.15);
-          color: #22d3ee;
+        .sb-item:hover, .sb-item:active {
+          background: rgba(255,255,255,0.04);
+          color: rgba(226,232,240,0.75);
+          border-color: rgba(255,255,255,0.06);
         }
         .sb-item.active {
-          background: linear-gradient(135deg, rgba(34,211,238,0.08), rgba(167,139,250,0.05));
-          border-color: rgba(34,211,238,0.14);
+          background: rgba(34,211,238,0.06);
+          border-color: rgba(34,211,238,0.15);
           color: #e2e8f0;
           font-weight: 600;
         }
         .sb-item.active .sb-icon {
           background: rgba(34,211,238,0.1);
-          border-color: rgba(34,211,238,0.22);
+          border-color: rgba(34,211,238,0.2);
           color: #22d3ee;
-          box-shadow: 0 0 10px rgba(34,211,238,0.1);
         }
 
         /* Active indicator */
@@ -286,8 +288,8 @@ export default function Sidebar({ open, onClose, currentPage, onNavigate }) {
         .sb-item.active::before { opacity: 1; }
 
         .sb-icon {
-          width: 30px; height: 30px;
-          border-radius: 8px;
+          width: 32px; height: 32px;
+          border-radius: 9px;
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
           background: rgba(255,255,255,0.03);
@@ -306,7 +308,7 @@ export default function Sidebar({ open, onClose, currentPage, onNavigate }) {
 
         /* Footer */
         .sb-footer {
-          padding: 12px 12px 16px;
+          padding: 10px 10px 14px;
           border-top: 1px solid rgba(255,255,255,0.06);
           flex-shrink: 0;
         }
@@ -321,11 +323,9 @@ export default function Sidebar({ open, onClose, currentPage, onNavigate }) {
           margin-bottom: 8px;
         }
         .sb-avatar {
-          width: 34px; height: 34px;
+          width: 36px; height: 36px;
           border-radius: 10px;
           display: flex; align-items: center; justify-content: center;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 13px; font-weight: 600;
           flex-shrink: 0;
           position: relative;
         }
@@ -337,12 +337,12 @@ export default function Sidebar({ open, onClose, currentPage, onNavigate }) {
           display: flex; align-items: center; justify-content: center;
           color: #22d3ee;
           font-family: 'JetBrains Mono', monospace;
-          font-size: 13px; font-weight: 600;
+          font-size: 14px; font-weight: 600;
         }
         .sb-online {
           position: absolute;
           bottom: -2px; left: -2px;
-          width: 8px; height: 8px;
+          width: 9px; height: 9px;
           border-radius: 50%;
           border: 1.5px solid #06080f;
         }
@@ -364,30 +364,30 @@ export default function Sidebar({ open, onClose, currentPage, onNavigate }) {
           border-radius: 50%; flex-shrink: 0;
         }
 
-        /* Logout */
+        /* Logout — min 44px touch */
         .sb-logout {
           width: 100%;
-          padding: 9px 14px;
-          border-radius: 9px;
+          padding: 11px 14px;
+          border-radius: 10px;
           border: 1px solid rgba(239,68,68,0.1);
           background: transparent;
-          color: rgba(239,68,68,0.4);
+          color: rgba(239,68,68,0.45);
           font-family: 'IBM Plex Sans Arabic', sans-serif;
-          font-size: 12px; font-weight: 500;
+          font-size: 13px; font-weight: 500;
           cursor: pointer;
           display: flex; align-items: center; justify-content: center; gap: 7px;
           direction: rtl;
           transition: all 0.18s;
+          -webkit-tap-highlight-color: transparent;
         }
-        .sb-logout:hover {
+        .sb-logout:active {
           background: rgba(239,68,68,0.07);
           border-color: rgba(239,68,68,0.22);
           color: #f87171;
-          box-shadow: 0 0 16px rgba(239,68,68,0.06);
         }
 
         @keyframes item-in {
-          from { opacity: 0; transform: translateX(10px); }
+          from { opacity: 0; transform: translateX(8px); }
           to   { opacity: 1; transform: translateX(0); }
         }
         .sb-item { animation: item-in 0.3s ease both; }
@@ -429,8 +429,8 @@ export default function Sidebar({ open, onClose, currentPage, onNavigate }) {
           </div>
           <button className="sb-close" onClick={onClose}>
             <svg
-              width="12"
-              height="12"
+              width="13"
+              height="13"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"

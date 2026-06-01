@@ -1,3 +1,4 @@
+// Attendance.jsx — Mobile responsive
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/Sultan";
 
@@ -13,7 +14,6 @@ export default function Attendance() {
   const fetchAll = () => {
     setLoading(true);
     setError("");
-    // ✅ Admin → /attendance/all | Staff → /attendance/my
     const endpoint = isAdmin ? "/attendance/all" : "/attendance/my";
     apiFetch(endpoint)
       .then((data) =>
@@ -46,7 +46,7 @@ export default function Attendance() {
     try {
       await apiFetch("/attendance/clockin", {
         method: "POST",
-        body: JSON.stringify({}), // ✅ body فاضي بس لازم يبعت JSON
+        body: JSON.stringify({}),
       });
       fetchAll();
     } catch (e) {
@@ -80,11 +80,13 @@ export default function Attendance() {
   const dates = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
 
   return (
-    <div style={{ fontFamily: "'Sora',sans-serif", color: "#e2e8f0" }}>
-      <div style={{ marginBottom: 28 }}>
+    <div
+      style={{ fontFamily: "'Sora',sans-serif", color: "#e2e8f0" }}
+      dir="rtl"
+    >
+      <div style={{ marginBottom: 20 }}>
         <p style={S.eyebrow}>{isAdmin ? "Manager View" : "My Attendance"}</p>
         <h1 style={S.h1}>الحضور 🗓</h1>
-        {/* ✅ عداد للـ Admin */}
         {isAdmin && !loading && (
           <p style={{ color: "#475569", fontSize: 12, marginTop: 4 }}>
             {records.length} سجل · {dates.length} يوم
@@ -92,7 +94,6 @@ export default function Attendance() {
         )}
       </div>
 
-      {/* Error */}
       {error && (
         <div
           style={{
@@ -102,23 +103,32 @@ export default function Attendance() {
             padding: "10px 14px",
             color: "#f87171",
             fontSize: 12,
-            marginBottom: 16,
+            marginBottom: 14,
           }}
         >
           ⚠️ {error}
         </div>
       )}
 
-      {/* Clock In/Out للموظف */}
+      {/* Clock In/Out — mobile optimized */}
       {!isAdmin && (
-        <div style={S.clockCard}>
-          <div>
-            <p style={{ color: "#94a3b8", fontSize: 13, margin: "0 0 4px" }}>
+        <div
+          style={{
+            background: "rgba(15,23,42,0.7)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 14,
+            padding: 14,
+            marginBottom: 20,
+          }}
+        >
+          {/* Status */}
+          <div style={{ textAlign: "center", marginBottom: 14 }}>
+            <p style={{ color: "#94a3b8", fontSize: 13, margin: "0 0 6px" }}>
               حالتك النهارده
             </p>
             <p
               style={{
-                fontSize: 15,
+                fontSize: 18,
                 fontWeight: 700,
                 margin: 0,
                 color:
@@ -136,18 +146,31 @@ export default function Attendance() {
                   : "⬜ لم تسجل بعد"}
             </p>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+
+          {/* Action buttons — full width on mobile */}
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
+          >
             <button
               onClick={handleClockIn}
               disabled={
                 actionLoading || myStatus === "in" || myStatus === "out"
               }
               style={{
-                ...S.btn,
-                background: "rgba(16,185,129,0.15)",
-                color: "#10b981",
+                height: 48,
+                borderRadius: 12,
                 border: "1px solid rgba(16,185,129,0.3)",
+                background: "rgba(16,185,129,0.1)",
+                color: "#10b981",
+                fontSize: 13,
+                fontFamily: "'Sora',sans-serif",
+                fontWeight: 600,
+                cursor:
+                  myStatus === "in" || myStatus === "out"
+                    ? "not-allowed"
+                    : "pointer",
                 opacity: myStatus === "in" || myStatus === "out" ? 0.4 : 1,
+                transition: "all 0.15s",
               }}
             >
               {actionLoading ? "..." : "تسجيل حضور"}
@@ -156,11 +179,17 @@ export default function Attendance() {
               onClick={handleClockOut}
               disabled={actionLoading || myStatus !== "in"}
               style={{
-                ...S.btn,
-                background: "rgba(96,165,250,0.15)",
-                color: "#60a5fa",
+                height: 48,
+                borderRadius: 12,
                 border: "1px solid rgba(96,165,250,0.3)",
+                background: "rgba(96,165,250,0.1)",
+                color: "#60a5fa",
+                fontSize: 13,
+                fontFamily: "'Sora',sans-serif",
+                fontWeight: 600,
+                cursor: myStatus !== "in" ? "not-allowed" : "pointer",
                 opacity: myStatus !== "in" ? 0.4 : 1,
+                transition: "all 0.15s",
               }}
             >
               {actionLoading ? "..." : "تسجيل انصراف"}
@@ -169,16 +198,20 @@ export default function Attendance() {
         </div>
       )}
 
-      {/* Refresh button للـ Admin */}
       {isAdmin && (
         <button
           onClick={fetchAll}
           style={{
-            ...S.btn,
+            padding: "9px 16px",
+            borderRadius: 10,
+            border: "1px solid rgba(34,211,238,0.2)",
             background: "rgba(34,211,238,0.08)",
             color: "#22d3ee",
-            border: "1px solid rgba(34,211,238,0.2)",
+            fontSize: 12,
+            fontFamily: "'Sora',sans-serif",
+            cursor: "pointer",
             marginBottom: 16,
+            minHeight: 40,
           }}
         >
           🔄 تحديث
@@ -197,17 +230,32 @@ export default function Attendance() {
         </div>
       ) : (
         dates.map((date) => (
-          <div key={date} style={S.group}>
+          <div key={date} style={{ marginBottom: 20 }}>
             <p style={S.dateLabel}>{date}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {grouped[date].map((r) => (
                 <div key={r.id} style={S.row}>
                   <div
-                    style={{ display: "flex", alignItems: "center", gap: 12 }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      flex: 1,
+                      minWidth: 0,
+                    }}
                   >
                     <div style={S.av}>{r.name?.charAt(0) || "?"}</div>
-                    <div>
-                      <p style={S.name}>{r.name}</p>
+                    <div style={{ minWidth: 0 }}>
+                      <p
+                        style={{
+                          ...S.name,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {r.name}
+                      </p>
                       <span
                         style={{
                           ...S.roleBadge,
@@ -218,21 +266,31 @@ export default function Attendance() {
                       </span>
                     </div>
                   </div>
+
+                  {/* Times — compact on mobile */}
                   <div
-                    style={{ display: "flex", gap: 20, alignItems: "center" }}
+                    style={{
+                      display: "flex",
+                      gap: 12,
+                      alignItems: "center",
+                      flexShrink: 0,
+                    }}
                   >
                     <div style={{ textAlign: "center" }}>
-                      <p style={S.timeLabel}>Clock In</p>
-                      <p style={{ ...S.timeVal, color: "#10b981" }}>
+                      <p style={S.timeLabel}>دخول</p>
+                      <p
+                        style={{ ...S.timeVal, color: "#10b981", fontSize: 12 }}
+                      >
                         {r.clockIn || "—"}
                       </p>
                     </div>
                     <div style={{ textAlign: "center" }}>
-                      <p style={S.timeLabel}>Clock Out</p>
+                      <p style={S.timeLabel}>خروج</p>
                       <p
                         style={{
                           ...S.timeVal,
                           color: r.clockOut ? "#60a5fa" : "#475569",
+                          fontSize: 12,
                         }}
                       >
                         {r.clockOut || "Active"}
@@ -240,11 +298,12 @@ export default function Attendance() {
                     </div>
                     <div
                       style={{
-                        width: 8,
-                        height: 8,
+                        width: 7,
+                        height: 7,
                         borderRadius: "50%",
                         background: r.clockOut ? "#334155" : "#10b981",
-                        boxShadow: r.clockOut ? "none" : "0 0 6px #10b981",
+                        boxShadow: r.clockOut ? "none" : "0 0 5px #10b981",
+                        flexShrink: 0,
                       }}
                     />
                   </div>
@@ -261,52 +320,33 @@ export default function Attendance() {
 const S = {
   eyebrow: {
     color: "#64748b",
-    fontSize: 13,
+    fontSize: 11,
     marginBottom: 4,
     letterSpacing: "0.05em",
     textTransform: "uppercase",
   },
   h1: {
-    fontSize: 28,
+    fontSize: "clamp(22px, 6vw, 28px)",
     fontWeight: 700,
-    letterSpacing: "-0.03em",
+    letterSpacing: "-0.02em",
     color: "#f1f5f9",
-  },
-  clockCard: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    background: "rgba(15,23,42,0.7)",
-    border: "1px solid rgba(255,255,255,0.07)",
-    borderRadius: 14,
-    padding: "16px 20px",
-    marginBottom: 24,
-  },
-  btn: {
-    padding: "8px 16px",
-    borderRadius: 10,
-    fontSize: 12,
-    fontFamily: "'Sora',sans-serif",
-    fontWeight: 600,
-    cursor: "pointer",
   },
   empty: {
     background: "rgba(15,23,42,0.7)",
     border: "1px solid rgba(255,255,255,0.07)",
     borderRadius: 16,
-    padding: "60px 20px",
+    padding: "50px 20px",
     textAlign: "center",
     color: "#475569",
     fontSize: 14,
   },
-  group: { marginBottom: 24 },
   dateLabel: {
     color: "#64748b",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 600,
     letterSpacing: "0.05em",
     textTransform: "uppercase",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   row: {
     display: "flex",
@@ -315,11 +355,12 @@ const S = {
     background: "rgba(15,23,42,0.7)",
     border: "1px solid rgba(255,255,255,0.06)",
     borderRadius: 12,
-    padding: "14px 18px",
+    padding: "12px 14px",
+    gap: 8,
   },
   av: {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
     borderRadius: 10,
     flexShrink: 0,
     background: "linear-gradient(135deg,#2563eb,#7c3aed)",
@@ -328,13 +369,13 @@ const S = {
     justifyContent: "center",
     color: "#fff",
     fontWeight: 700,
-    fontSize: 15,
+    fontSize: 14,
   },
-  name: { color: "#cbd5e1", fontSize: 14, fontWeight: 600, margin: "0 0 4px" },
+  name: { color: "#cbd5e1", fontSize: 13, fontWeight: 600, margin: "0 0 3px" },
   roleBadge: {
     display: "inline-block",
     borderRadius: 20,
-    padding: "2px 8px",
+    padding: "2px 7px",
     fontSize: 10,
     fontWeight: 600,
     border: "1px solid",
@@ -351,10 +392,10 @@ const S = {
   },
   timeLabel: {
     color: "#475569",
-    fontSize: 10,
+    fontSize: 9,
     textTransform: "uppercase",
     letterSpacing: "0.05em",
-    margin: "0 0 3px",
+    margin: "0 0 2px",
   },
-  timeVal: { fontWeight: 600, fontSize: 14, margin: 0 },
+  timeVal: { fontWeight: 600, fontSize: 12, margin: 0 },
 };

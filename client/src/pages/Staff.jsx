@@ -1,5 +1,7 @@
+// Staff.jsx — Mobile responsive
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/Sultan";
+import { X } from "lucide-react";
 
 export function Staff() {
   const { apiFetch } = useAuth();
@@ -67,15 +69,22 @@ export function Staff() {
   };
 
   return (
-    <div style={S.page}>
+    <div style={S.page} dir="rtl">
+      <style>{`
+        .staff-input:focus { border-color: rgba(34,211,238,0.4) !important; outline: none; }
+        @media (min-width: 560px) {
+          .staff-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+      `}</style>
+
       <div
         style={{
           display: "flex",
           alignItems: "flex-start",
           justifyContent: "space-between",
-          marginBottom: 24,
+          marginBottom: 20,
           flexWrap: "wrap",
-          gap: 12,
+          gap: 10,
         }}
       >
         <div>
@@ -89,6 +98,7 @@ export function Staff() {
             background: "rgba(34,211,238,0.1)",
             borderColor: "rgba(34,211,238,0.3)",
             color: "#22d3ee",
+            minHeight: 44,
           }}
         >
           + موظف جديد
@@ -96,11 +106,8 @@ export function Staff() {
       </div>
 
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))",
-          gap: 12,
-        }}
+        className="staff-grid"
+        style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}
       >
         {loading ? (
           <p style={{ color: "#334155" }}>جارٍ التحميل...</p>
@@ -114,7 +121,7 @@ export function Staff() {
                 background: "rgba(15,23,42,0.7)",
                 border: "1px solid rgba(255,255,255,0.06)",
                 borderRadius: 14,
-                padding: 16,
+                padding: 14,
               }}
             >
               <div
@@ -122,14 +129,14 @@ export function Staff() {
                   display: "flex",
                   alignItems: "center",
                   gap: 12,
-                  marginBottom: 14,
+                  marginBottom: 12,
                 }}
               >
                 <div
                   style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 12,
+                    width: 44,
+                    height: 44,
+                    borderRadius: 13,
                     background:
                       "linear-gradient(135deg,rgba(34,211,238,0.15),rgba(167,139,250,0.15))",
                     border: "1px solid rgba(255,255,255,0.08)",
@@ -138,32 +145,46 @@ export function Staff() {
                     justifyContent: "center",
                     color: "#22d3ee",
                     fontWeight: 700,
-                    fontSize: 16,
+                    fontSize: 18,
+                    flexShrink: 0,
                   }}
                 >
                   {s.name.charAt(0)}
                 </div>
-                <div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <p
                     style={{
                       color: "#f1f5f9",
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: 700,
-                      margin: 0,
+                      margin: "0 0 2px",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                     }}
                   >
                     {s.name}
                   </p>
-                  <p style={{ color: "#475569", fontSize: 11, margin: 0 }}>
+                  <p
+                    style={{
+                      color: "#475569",
+                      fontSize: 11,
+                      margin: 0,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
                     {s.email}
                   </p>
                 </div>
               </div>
+
               <div
                 style={{
                   display: "flex",
                   flexWrap: "wrap",
-                  gap: 6,
+                  gap: 5,
                   marginBottom: 12,
                 }}
               >
@@ -177,7 +198,7 @@ export function Staff() {
                           color: "#10b981",
                           background: "rgba(16,185,129,0.08)",
                           borderColor: "rgba(16,185,129,0.15)",
-                          fontSize: 9,
+                          fontSize: 10,
                         }}
                       >
                         {k === "manageOrders"
@@ -189,16 +210,17 @@ export function Staff() {
                     ),
                 )}
               </div>
+
               <button
                 onClick={() => removeStaff(s._id)}
                 style={{
                   width: "100%",
-                  padding: "7px",
-                  borderRadius: 8,
+                  height: 40,
+                  borderRadius: 10,
                   border: "1px solid rgba(239,68,68,0.15)",
                   background: "transparent",
                   color: "rgba(239,68,68,0.5)",
-                  fontSize: 11,
+                  fontSize: 12,
                   fontFamily: "'Sora',sans-serif",
                   cursor: "pointer",
                 }}
@@ -210,19 +232,51 @@ export function Staff() {
         )}
       </div>
 
+      {/* Add Staff — Bottom Sheet */}
       {showAdd && (
         <div style={S.overlay}>
-          <div style={S.modal}>
-            <h3
+          <div style={S.sheet}>
+            <div
               style={{
-                color: "#f1f5f9",
-                fontSize: 15,
-                fontWeight: 700,
-                margin: "0 0 14px",
+                width: 36,
+                height: 4,
+                borderRadius: 2,
+                background: "rgba(255,255,255,0.1)",
+                margin: "0 auto 16px",
+              }}
+            />
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 14,
               }}
             >
-              إضافة موظف
-            </h3>
+              <h3
+                style={{
+                  color: "#f1f5f9",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  margin: 0,
+                }}
+              >
+                إضافة موظف
+              </h3>
+              <button
+                onClick={() => setShowAdd(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#475569",
+                  cursor: "pointer",
+                  padding: 4,
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
                 ["name", "الاسم *", "text"],
@@ -233,14 +287,23 @@ export function Staff() {
                   <label style={S.label}>{l}</label>
                   <input
                     type={t}
-                    style={S.input}
+                    className="staff-input"
+                    style={{ ...S.input, height: 44 }}
                     value={form[k]}
+                    autoComplete={
+                      t === "email"
+                        ? "email"
+                        : t === "password"
+                          ? "new-password"
+                          : "name"
+                    }
                     onChange={(e) =>
                       setForm((f) => ({ ...f, [k]: e.target.value }))
                     }
                   />
                 </div>
               ))}
+
               <div>
                 <label style={S.label}>الصلاحيات</label>
                 {[
@@ -253,11 +316,12 @@ export function Staff() {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 8,
+                      gap: 10,
                       color: "#94a3b8",
-                      fontSize: 12,
+                      fontSize: 13,
                       cursor: "pointer",
-                      marginBottom: 6,
+                      marginBottom: 10,
+                      minHeight: 36,
                     }}
                   >
                     <input
@@ -272,20 +336,22 @@ export function Staff() {
                           },
                         }))
                       }
+                      style={{ width: 18, height: 18 }}
                     />
                     {l}
                   </label>
                 ))}
               </div>
             </div>
+
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
               <button
                 onClick={addStaff}
                 disabled={saving || !form.name || !form.email || !form.password}
                 style={{
                   flex: 1,
-                  padding: "10px",
-                  borderRadius: 10,
+                  height: 48,
+                  borderRadius: 12,
                   border: "1px solid rgba(34,211,238,0.3)",
                   background: "rgba(34,211,238,0.1)",
                   color: "#22d3ee",
@@ -305,8 +371,8 @@ export function Staff() {
                 onClick={() => setShowAdd(false)}
                 style={{
                   flex: 1,
-                  padding: "10px",
-                  borderRadius: 10,
+                  height: 48,
+                  borderRadius: 12,
                   border: "1px solid rgba(255,255,255,0.07)",
                   background: "transparent",
                   color: "#475569",
@@ -325,7 +391,6 @@ export function Staff() {
   );
 }
 
-// ✅ styles object كان ناقص — ده سبب الـ crash
 const S = {
   page: { fontFamily: "'Sora',sans-serif", color: "#e2e8f0" },
   eyebrow: {
@@ -335,7 +400,12 @@ const S = {
     textTransform: "uppercase",
     margin: 0,
   },
-  h1: { fontSize: 24, fontWeight: 700, color: "#f1f5f9", margin: "4px 0 0" },
+  h1: {
+    fontSize: "clamp(20px, 6vw, 28px)",
+    fontWeight: 700,
+    color: "#f1f5f9",
+    margin: "4px 0 0",
+  },
   label: {
     color: "#475569",
     fontSize: 11,
@@ -347,16 +417,15 @@ const S = {
     background: "rgba(15,23,42,0.8)",
     border: "1px solid rgba(255,255,255,0.07)",
     borderRadius: 10,
-    padding: "9px 12px",
+    padding: "0 12px",
     color: "#cbd5e1",
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: "'Sora',sans-serif",
-    outline: "none",
     boxSizing: "border-box",
     width: "100%",
   },
   filterBtn: {
-    padding: "9px 16px",
+    padding: "9px 14px",
     borderRadius: 10,
     border: "1px solid rgba(255,255,255,0.1)",
     background: "rgba(255,255,255,0.04)",
@@ -380,17 +449,18 @@ const S = {
     backdropFilter: "blur(8px)",
     zIndex: 100,
     display: "flex",
-    alignItems: "center",
+    alignItems: "flex-end",
     justifyContent: "center",
   },
-  modal: {
+  sheet: {
     background: "#0d1117",
     border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: 16,
-    padding: "24px",
+    borderRadius: "20px 20px 0 0",
+    padding: "16px 20px",
+    paddingBottom: "calc(20px + env(safe-area-inset-bottom, 0px))",
     width: "100%",
-    maxWidth: 380,
-    maxHeight: "90vh",
+    maxWidth: 480,
+    maxHeight: "85vh",
     overflowY: "auto",
   },
 };

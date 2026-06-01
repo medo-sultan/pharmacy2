@@ -39,6 +39,7 @@ export function Sales() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [selectedSale, setSelectedSale] = useState(null);
+  const [activeMethod, setActiveMethod] = useState("insurance");
 
   const load = () => {
     setLoading(true);
@@ -63,29 +64,43 @@ export function Sales() {
     cash: sales.filter((s) => s.paymentMethod === "cash"),
     card: sales.filter((s) => s.paymentMethod === "card"),
   };
-
   const colTotal = (arr) =>
     arr.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+  const activeItems = byMethod[activeMethod] || [];
+  const cfg = METHOD_CONFIG[activeMethod];
 
   return (
     <div style={S.page}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap');
-        *{font-family:'Sora',sans-serif;box-sizing:border-box}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        .sale-row{transition:background 0.12s,border-color 0.12s;cursor:pointer}
-        .sale-row:hover{background:rgba(255,255,255,0.04)!important}
-        ::-webkit-scrollbar{width:3px}
-        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:3px}
-        ::-webkit-scrollbar-track{background:transparent}
+        * { font-family: 'Sora', sans-serif; box-sizing: border-box; }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
+        @keyframes slideUp { from { transform:translateY(100%) } to { transform:translateY(0) } }
+        @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+        .sale-row { transition: background 0.12s; cursor: pointer; }
+        .sale-row:active { background: rgba(255,255,255,0.05) !important; }
+        .mtab { transition: all 0.15s; }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.5); }
       `}</style>
 
-      {/* Detail Modal */}
+      {/* ── Detail Bottom Sheet ── */}
       {selectedSale && (
-        <div style={S.overlay} onClick={() => setSelectedSale(null)}>
-          <div style={S.modal} onClick={(e) => e.stopPropagation()}>
-            <div style={S.modalHead}>
+        <div style={S.sheetOverlay} onClick={() => setSelectedSale(null)}>
+          <div
+            style={{
+              ...S.bottomSheet,
+              maxHeight: "85vh",
+              display: "flex",
+              flexDirection: "column",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={S.dragHandle} />
+            {/* Sheet Header */}
+            <div style={S.sheetHead}>
               <div>
                 <p
                   style={{
@@ -109,19 +124,19 @@ export function Sales() {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 {(() => {
-                  const cfg =
+                  const c =
                     METHOD_CONFIG[selectedSale.paymentMethod] ||
                     METHOD_CONFIG.cash;
                   return (
                     <span
                       style={{
                         ...S.badge,
-                        color: cfg.color,
-                        background: cfg.badgeBg,
-                        borderColor: cfg.badgeBorder,
+                        color: c.color,
+                        background: c.badgeBg,
+                        borderColor: c.badgeBorder,
                       }}
                     >
-                      {cfg.icon} {cfg.label}
+                      {c.icon} {c.label}
                     </span>
                   );
                 })()}
@@ -134,8 +149,9 @@ export function Sales() {
               </div>
             </div>
 
-            <div style={S.modalBody}>
-              {/* Meta row */}
+            {/* Sheet Body */}
+            <div style={S.sheetBody}>
+              {/* Meta */}
               <div style={S.metaRow}>
                 <div style={S.metaItem}>
                   <span style={S.metaLabel}>الموظف</span>
@@ -174,41 +190,36 @@ export function Sales() {
                 )}
               </div>
 
-              {/* Items table */}
+              {/* Items */}
               <div style={S.itemsHead}>
-                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>
-                  الصنف
-                </span>
-                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>
-                  الكمية
-                </span>
-                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>
-                  السعر
-                </span>
-                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>
-                  الإجمالي
-                </span>
+                {["الصنف", "الكمية", "السعر", "الإجمالي"].map((h) => (
+                  <span
+                    key={h}
+                    style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}
+                  >
+                    {h}
+                  </span>
+                ))}
               </div>
-
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {(selectedSale.items || []).map((item, i) => (
                   <div key={i} style={S.itemRow}>
-                    <span style={{ color: "#cbd5e1", fontSize: 13 }}>
+                    <span style={{ color: "#cbd5e1", fontSize: 12 }}>
                       {item.medicineName ||
                         item.medicine?.name ||
                         item.name ||
                         "—"}
                     </span>
-                    <span style={{ color: "#94a3b8", fontSize: 13 }}>
+                    <span style={{ color: "#94a3b8", fontSize: 12 }}>
                       {item.quantity}
                     </span>
-                    <span style={{ color: "#94a3b8", fontSize: 13 }}>
+                    <span style={{ color: "#94a3b8", fontSize: 12 }}>
                       {item.unitPrice || item.price || "—"} ج
                     </span>
                     <span
                       style={{
                         color: "#10b981",
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: 600,
                       }}
                     >
@@ -282,43 +293,41 @@ export function Sales() {
         </div>
       )}
 
-      {/* Page header */}
-      <div style={{ marginBottom: 20 }}>
+      {/* ── Page Header ── */}
+      <div style={{ padding: "18px 16px 12px", flexShrink: 0 }}>
         <p style={S.eyebrow}>Pharmacy</p>
         <h1 style={S.h1}>المبيعات 💰</h1>
       </div>
 
-      {/* Filters */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          marginBottom: 20,
-          alignItems: "flex-end",
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <label style={S.label}>من</label>
-          <input
-            type="date"
-            style={S.input}
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-          />
-        </div>
-        <div>
-          <label style={S.label}>إلى</label>
-          <input
-            type="date"
-            style={S.input}
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-          />
+      {/* ── Filters ── */}
+      <div style={S.filterRow}>
+        <div style={{ display: "flex", gap: 8, flex: 1 }}>
+          <div style={{ flex: 1 }}>
+            <label style={S.label}>من</label>
+            <input
+              type="date"
+              style={S.input}
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={S.label}>إلى</label>
+            <input
+              type="date"
+              style={S.input}
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+            />
+          </div>
         </div>
         <button onClick={load} style={S.filterBtn}>
           بحث
         </button>
+      </div>
+
+      {/* ── Revenue Box ── */}
+      <div style={{ padding: "0 16px 12px", flexShrink: 0 }}>
         <div style={S.revenueBox}>
           <p
             style={{
@@ -342,166 +351,127 @@ export function Sales() {
         </div>
       </div>
 
-      {/* Three columns */}
-      <div style={S.colGrid}>
-        {["insurance", "cash", "card"].map((method) => {
-          const cfg = METHOD_CONFIG[method];
-          const items = byMethod[method];
-          const tot = colTotal(items);
+      {/* ── Method Tabs ── */}
+      <div style={S.tabsRow}>
+        {["insurance", "cash", "card"].map((m) => {
+          const c = METHOD_CONFIG[m];
+          const count = byMethod[m].length;
+          const tot = colTotal(byMethod[m]);
+          const isActive = activeMethod === m;
           return (
-            <div key={method} style={{ ...S.col, borderColor: cfg.border }}>
-              {/* Column header */}
-              <div
+            <button
+              key={m}
+              className="mtab"
+              onClick={() => setActiveMethod(m)}
+              style={{
+                ...S.tab,
+                ...(isActive
+                  ? {
+                      ...S.tabActive,
+                      color: c.color,
+                      borderBottomColor: c.color,
+                    }
+                  : {}),
+              }}
+            >
+              <span style={{ fontSize: 16 }}>{c.icon}</span>
+              <span style={{ fontSize: 12, fontWeight: isActive ? 600 : 400 }}>
+                {c.label}
+              </span>
+              <span
                 style={{
-                  ...S.colHead,
-                  background: cfg.bg,
-                  borderBottomColor: cfg.border,
+                  fontSize: 10,
+                  color: isActive ? c.color : "rgba(255,255,255,0.25)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>{cfg.icon}</span>
-                  <span
-                    style={{ color: cfg.color, fontSize: 14, fontWeight: 700 }}
-                  >
-                    {cfg.label}
-                  </span>
-                </div>
-                <div style={{ textAlign: "left" }}>
-                  <p
-                    style={{
-                      color: "rgba(255,255,255,0.3)",
-                      fontSize: 10,
-                      margin: "0 0 1px",
-                    }}
-                  >
-                    {items.length} عملية
-                  </p>
-                  <p
-                    style={{
-                      color: cfg.color,
-                      fontSize: 15,
-                      fontWeight: 700,
-                      margin: 0,
-                    }}
-                  >
-                    {tot.toFixed(2)} ج
-                  </p>
-                </div>
-              </div>
-
-              {/* Sales list */}
-              <div style={S.colBody}>
-                {loading ? (
-                  <p style={S.colEmpty}>جارٍ التحميل...</p>
-                ) : items.length === 0 ? (
-                  <p style={S.colEmpty}>لا توجد عمليات</p>
-                ) : (
-                  items.map((s, i) => (
-                    <div
-                      key={s._id}
-                      className="sale-row"
-                      onClick={() => setSelectedSale(s)}
-                      style={{ ...S.saleCard, animationDelay: `${i * 0.04}s` }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "flex-start",
-                          marginBottom: 6,
-                        }}
-                      >
-                        <span
-                          style={{
-                            color: "#e2e8f0",
-                            fontSize: 13,
-                            fontWeight: 600,
-                          }}
-                        >
-                          {s.patientName || "مريض غير محدد"}
-                        </span>
-                        <span
-                          style={{
-                            color: cfg.color,
-                            fontSize: 14,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {s.totalAmount} ج
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <span
-                          style={{
-                            color: "rgba(255,255,255,0.25)",
-                            fontSize: 11,
-                          }}
-                        >
-                          {s.items?.length || 0} صنف · {s.servedBy?.name || "—"}
-                        </span>
-                        <span
-                          style={{
-                            color: "rgba(255,255,255,0.2)",
-                            fontSize: 10,
-                          }}
-                        >
-                          {new Date(s.createdAt).toLocaleTimeString("ar-EG", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                      {method === "insurance" && s.insuranceCompany && (
-                        <div
-                          style={{
-                            marginTop: 6,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                          }}
-                        >
-                          <span
-                            style={{
-                              color: "rgba(34,211,238,0.5)",
-                              fontSize: 10,
-                            }}
-                          >
-                            🛡️
-                          </span>
-                          <span
-                            style={{
-                              color: "rgba(34,211,238,0.6)",
-                              fontSize: 10,
-                            }}
-                          >
-                            {s.insuranceCompany}
-                          </span>
-                          {s.discountPercent > 0 && (
-                            <span
-                              style={{
-                                color: "#f59e0b",
-                                fontSize: 10,
-                                marginRight: "auto",
-                              }}
-                            >
-                              خصم {s.discountPercent}%
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+                {count} · {tot.toFixed(0)} ج
+              </span>
+            </button>
           );
         })}
+      </div>
+
+      {/* ── Sales List ── */}
+      <div style={S.list}>
+        {loading ? (
+          <p style={S.empty}>جارٍ التحميل...</p>
+        ) : activeItems.length === 0 ? (
+          <p style={S.empty}>لا توجد عمليات</p>
+        ) : (
+          activeItems.map((s, i) => (
+            <div
+              key={s._id}
+              className="sale-row"
+              onClick={() => setSelectedSale(s)}
+              style={{ ...S.saleCard, animationDelay: `${i * 0.04}s` }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  marginBottom: 6,
+                }}
+              >
+                <span
+                  style={{ color: "#e2e8f0", fontSize: 13, fontWeight: 600 }}
+                >
+                  {s.patientName || "مريض غير محدد"}
+                </span>
+                <span
+                  style={{ color: cfg.color, fontSize: 14, fontWeight: 700 }}
+                >
+                  {s.totalAmount} ج
+                </span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 11 }}>
+                  {s.items?.length || 0} صنف · {s.servedBy?.name || "—"}
+                </span>
+                <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 10 }}>
+                  {new Date(s.createdAt).toLocaleTimeString("ar-EG", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+              {activeMethod === "insurance" && s.insuranceCompany && (
+                <div
+                  style={{
+                    marginTop: 6,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <span style={{ color: "rgba(34,211,238,0.5)", fontSize: 10 }}>
+                    🛡️
+                  </span>
+                  <span style={{ color: "rgba(34,211,238,0.6)", fontSize: 10 }}>
+                    {s.insuranceCompany}
+                  </span>
+                  {s.discountPercent > 0 && (
+                    <span
+                      style={{
+                        color: "#f59e0b",
+                        fontSize: 10,
+                        marginRight: "auto",
+                      }}
+                    >
+                      خصم {s.discountPercent}%
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -509,79 +479,102 @@ export function Sales() {
 
 const S = {
   page: {
-    padding: "24px",
+    display: "flex",
+    flexDirection: "column",
     color: "#fff",
-    minHeight: "100vh",
     direction: "rtl",
+    height: "calc(100vh - 100px)",
+    overflow: "hidden",
   },
   eyebrow: { color: "#94a3b8", fontSize: 12, marginBottom: 4, margin: 0 },
-  h1: { fontSize: 28, fontWeight: "bold", margin: "4px 0 0" },
-  label: { display: "block", marginBottom: 6, color: "#cbd5e1", fontSize: 13 },
+  h1: { fontSize: 24, fontWeight: "bold", margin: "4px 0 0" },
+  filterRow: {
+    display: "flex",
+    gap: 8,
+    padding: "0 16px 12px",
+    alignItems: "flex-end",
+    flexShrink: 0,
+  },
+  label: { display: "block", marginBottom: 5, color: "#cbd5e1", fontSize: 12 },
   input: {
-    padding: "9px 13px",
+    width: "100%",
+    padding: "8px 10px",
     borderRadius: 10,
-    border: "1px solid #334155",
-    background: "#0f172a",
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(255,255,255,0.04)",
     color: "#fff",
     outline: "none",
-    fontSize: 13,
+    fontSize: 12,
+    fontFamily: "'Sora', sans-serif",
   },
   filterBtn: {
-    padding: "9px 18px",
+    padding: "8px 16px",
     borderRadius: 10,
     border: "1px solid rgba(59,130,246,0.3)",
     background: "rgba(59,130,246,0.15)",
     color: "#60a5fa",
     cursor: "pointer",
     fontWeight: 600,
-    fontSize: 13,
+    fontSize: 12,
+    fontFamily: "'Sora', sans-serif",
+    alignSelf: "flex-end",
+    whiteSpace: "nowrap",
   },
   revenueBox: {
-    marginRight: "auto",
-    background: "rgba(16,185,129,0.08)",
+    background: "rgba(16,185,129,0.07)",
     border: "1px solid rgba(16,185,129,0.2)",
     borderRadius: 12,
-    padding: "10px 20px",
+    padding: "10px 16px",
   },
-  colGrid: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 },
-  col: {
-    background: "rgba(8,12,20,0.8)",
-    border: "1px solid",
-    borderRadius: 16,
-    overflow: "hidden",
+  tabsRow: {
+    display: "flex",
+    flexShrink: 0,
+    borderBottom: "1px solid rgba(255,255,255,0.06)",
+  },
+  tab: {
+    flex: 1,
+    padding: "10px 6px",
+    border: "none",
+
+    borderBottomWidth: 2,
+    borderBottomStyle: "solid",
+    borderBottomColor: "transparent",
+
+    background: "transparent",
+    color: "rgba(255,255,255,0.3)",
+    cursor: "pointer",
     display: "flex",
     flexDirection: "column",
-    minHeight: 400,
-    maxHeight: "calc(100vh - 280px)",
-  },
-  colHead: {
-    padding: "14px 16px",
-    borderBottom: "1px solid",
-    display: "flex",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: 2,
+    fontFamily: "'Sora', sans-serif",
+    transition: "all 0.15s",
   },
-  colBody: {
+  tabActive: {
+    borderBottomWidth: 2,
+    borderBottomStyle: "solid",
+  },
+  list: {
     flex: 1,
     overflowY: "auto",
-    padding: "10px 12px",
+    padding: "12px 16px",
     display: "flex",
     flexDirection: "column",
     gap: 8,
-  },
-  colEmpty: {
-    color: "rgba(255,255,255,0.2)",
-    fontSize: 12,
-    textAlign: "center",
-    padding: "30px 0",
-    margin: 0,
+    scrollbarWidth: "none",
   },
   saleCard: {
     background: "rgba(255,255,255,0.025)",
     border: "1px solid rgba(255,255,255,0.06)",
-    borderRadius: 10,
-    padding: "10px 12px",
+    borderRadius: 12,
+    padding: "12px 14px",
     animation: "fadeUp 0.3s ease both",
+  },
+  empty: {
+    color: "rgba(255,255,255,0.2)",
+    fontSize: 12,
+    textAlign: "center",
+    padding: "40px 0",
   },
   badge: {
     padding: "4px 10px",
@@ -590,45 +583,48 @@ const S = {
     fontSize: 11,
     fontWeight: 600,
   },
-  // Modal
-  overlay: {
+
+  /* Bottom Sheet */
+  sheetOverlay: {
     position: "fixed",
     inset: 0,
     background: "rgba(0,0,0,0.75)",
     backdropFilter: "blur(5px)",
     display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: "column",
+    justifyContent: "flex-end",
     zIndex: 999,
     animation: "fadeIn 0.15s ease",
   },
-  modal: {
+  bottomSheet: {
     background: "#0d1526",
     border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 18,
-    width: 460,
-    maxWidth: "92vw",
-    maxHeight: "85vh",
+    borderRadius: "20px 20px 0 0",
+    animation: "slideUp 0.25s cubic-bezier(0.32,0.72,0,1)",
     overflow: "hidden",
-    display: "flex",
-    flexDirection: "column",
-    boxShadow: "0 30px 70px rgba(0,0,0,0.6)",
-    animation: "fadeUp 0.2s ease",
   },
-  modalHead: {
-    padding: "18px 20px",
+  dragHandle: {
+    width: 36,
+    height: 4,
+    background: "rgba(255,255,255,0.12)",
+    borderRadius: 2,
+    margin: "10px auto 0",
+  },
+  sheetHead: {
+    padding: "14px 18px",
     borderBottom: "1px solid rgba(255,255,255,0.07)",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
     flexShrink: 0,
   },
-  modalBody: {
-    padding: "18px 20px",
+  sheetBody: {
+    padding: "14px 18px 28px",
     overflowY: "auto",
     display: "flex",
     flexDirection: "column",
-    gap: 14,
+    gap: 12,
+    scrollbarWidth: "none",
   },
   closeBtn: {
     background: "transparent",
@@ -655,17 +651,17 @@ const S = {
     textTransform: "uppercase",
     letterSpacing: "0.05em",
   },
-  metaVal: { color: "#cbd5e1", fontSize: 13 },
+  metaVal: { color: "#cbd5e1", fontSize: 12 },
   itemsHead: {
     display: "grid",
     gridTemplateColumns: "2fr 1fr 1fr 1fr",
-    padding: "6px 12px",
+    padding: "6px 10px",
     borderBottom: "1px solid rgba(255,255,255,0.06)",
   },
   itemRow: {
     display: "grid",
     gridTemplateColumns: "2fr 1fr 1fr 1fr",
-    padding: "8px 12px",
+    padding: "8px 10px",
     borderRadius: 8,
     background: "rgba(255,255,255,0.02)",
     border: "1px solid rgba(255,255,255,0.04)",
