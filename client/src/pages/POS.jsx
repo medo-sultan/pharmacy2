@@ -15,6 +15,7 @@ export default function POS() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(null);
   const [error, setError] = useState("");
+  const [mobileTab, setMobileTab] = useState("products"); // "products" | "cart"
 
   // Insurance
   const INSURANCE_COMPANIES = [
@@ -119,6 +120,7 @@ export default function POS() {
       setPatientName("");
       setInsuranceCompany(null);
       setInsuranceCardNumber("");
+      setMobileTab("products");
       setTimeout(() => setSuccess(null), 3000);
     } catch (e) {
       setError(e.message || "فشلت العملية");
@@ -143,9 +145,85 @@ export default function POS() {
         ::-webkit-scrollbar{width:4px;height:4px}
         ::-webkit-scrollbar-track{background:transparent}
         ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:4px}
+
+        /* ── Mobile styles ── */
+        @media (max-width: 640px) {
+          .pos-layout {
+            flex-direction: column !important;
+            gap: 0 !important;
+            height: 100% !important;
+          }
+          .pos-left-panel {
+            flex: 1 !important;
+            border-radius: 12px 12px 0 0 !important;
+            border-bottom: none !important;
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 0 !important;
+          }
+          .pos-right-panel {
+            width: 100% !important;
+            flex-shrink: 0 !important;
+            border-radius: 0 !important;
+            border-top: 1px solid rgba(255,255,255,0.08) !important;
+            max-height: none !important;
+          }
+          .pos-panel-head {
+            flex-wrap: nowrap !important;
+            padding: 12px 14px 10px !important;
+            gap: 8px !important;
+          }
+          .pos-search {
+            width: 130px !important;
+            font-size: 11px !important;
+          }
+          .pos-grid {
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+            padding: 12px 14px !important;
+            gap: 8px !important;
+          }
+          .pos-cats-bar {
+            padding: 8px 14px !important;
+          }
+          /* Mobile tab switcher */
+          .mobile-tabs {
+            display: flex !important;
+          }
+          /* Hide panels based on active tab */
+          .pos-left-panel.mobile-hidden {
+            display: none !important;
+          }
+          .pos-right-panel.mobile-hidden {
+            display: none !important;
+          }
+          /* Cart footer on mobile: compact */
+          .pos-cart-foot {
+            padding: 12px 14px !important;
+            gap: 8px !important;
+          }
+          .pos-cart-body {
+            max-height: 220px !important;
+            padding: 10px 14px !important;
+          }
+          .pos-total-val {
+            font-size: 18px !important;
+          }
+          /* Floating cart button on mobile */
+          .mobile-cart-fab {
+            display: flex !important;
+          }
+        }
+        @media (min-width: 641px) {
+          .mobile-tabs { display: none !important; }
+          .mobile-cart-fab { display: none !important; }
+          .pos-left-panel.mobile-hidden,
+          .pos-right-panel.mobile-hidden {
+            display: flex !important;
+          }
+        }
       `}</style>
 
-      <div style={S.layout}>
+      <div className="pos-layout" style={S.layout}>
         {/* ── Insurance Modal ── */}
         {showInsuranceModal && (
           <div style={S.modalOverlay}>
@@ -303,10 +381,40 @@ export default function POS() {
             </div>
           </div>
         )}
+
+        {/* ── Mobile Tab Switcher ── */}
+        <div className="mobile-tabs" style={S.mobileTabs}>
+          <button
+            onClick={() => setMobileTab("products")}
+            style={{
+              ...S.mobileTab,
+              ...(mobileTab === "products" ? S.mobileTabActive : {}),
+            }}
+          >
+            🏪 الأدوية
+          </button>
+          <button
+            onClick={() => setMobileTab("cart")}
+            style={{
+              ...S.mobileTab,
+              ...(mobileTab === "cart" ? S.mobileTabActive : {}),
+              position: "relative",
+            }}
+          >
+            🛒 السلة
+            {cartItems.length > 0 && (
+              <span style={S.mobileTabBadge}>{cartItems.length}</span>
+            )}
+          </button>
+        </div>
+
         {/* ── Left Panel ── */}
-        <div style={S.leftPanel}>
+        <div
+          className={`pos-left-panel${mobileTab === "cart" ? " mobile-hidden" : ""}`}
+          style={S.leftPanel}
+        >
           {/* Header */}
-          <div style={S.panelHead}>
+          <div className="pos-panel-head" style={S.panelHead}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={S.headIcon}>
                 <svg
@@ -329,6 +437,7 @@ export default function POS() {
               </div>
             </div>
             <input
+              className="pos-search"
               style={S.search}
               placeholder="ابحث عن دواء..."
               value={search}
@@ -337,7 +446,7 @@ export default function POS() {
           </div>
 
           {/* Categories */}
-          <div style={S.catsBar}>
+          <div className="pos-cats-bar" style={S.catsBar}>
             {cats.map((c) => (
               <button
                 key={c}
@@ -354,7 +463,7 @@ export default function POS() {
           </div>
 
           {/* Grid */}
-          <div style={S.grid}>
+          <div className="pos-grid" style={S.grid}>
             {loading ? (
               <p style={S.muted}>جارٍ التحميل...</p>
             ) : filtered.length === 0 ? (
@@ -407,7 +516,10 @@ export default function POS() {
         </div>
 
         {/* ── Right Panel — Cart ── */}
-        <div style={S.rightPanel}>
+        <div
+          className={`pos-right-panel${mobileTab === "products" ? " mobile-hidden" : ""}`}
+          style={S.rightPanel}
+        >
           {/* Cart Header */}
           <div style={S.cartHead}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -424,7 +536,7 @@ export default function POS() {
           </div>
 
           {/* Cart Items */}
-          <div style={S.cartBody}>
+          <div className="pos-cart-body" style={S.cartBody}>
             {cartItems.length === 0 ? (
               <div style={S.emptyCart}>
                 <svg
@@ -495,7 +607,7 @@ export default function POS() {
           </div>
 
           {/* Cart Footer */}
-          <div style={S.cartFoot}>
+          <div className="pos-cart-foot" style={S.cartFoot}>
             <input
               style={S.patientInput}
               placeholder="اسم المريض (اختياري)"
@@ -526,7 +638,6 @@ export default function POS() {
               ))}
             </div>
 
-            {/* Insurance summary strip */}
             {paymentMethod === "insurance" && insuranceCompany && (
               <div
                 style={S.insStrip}
@@ -623,6 +734,7 @@ export default function POS() {
                 {activeInsurance ? "المبلغ المتبقي" : "الإجمالي"}
               </span>
               <span
+                className="pos-total-val"
                 style={{
                   ...S.totalVal,
                   color: activeInsurance ? "#22d3ee" : "#f1f5f9",
@@ -633,7 +745,6 @@ export default function POS() {
             </div>
 
             {error && <div style={S.errorBox}>⚠ {error}</div>}
-
             {success && (
               <div style={S.successBox}>
                 ✓ تمت البيعة · {success.count} صنف · {success.total.toFixed(2)}{" "}
@@ -655,6 +766,21 @@ export default function POS() {
           </div>
         </div>
       </div>
+
+      {/* ── Floating Cart FAB (mobile only, shown on products tab) ── */}
+      {mobileTab === "products" && cartItems.length > 0 && (
+        <button
+          className="mobile-cart-fab"
+          onClick={() => setMobileTab("cart")}
+          style={S.cartFab}
+        >
+          <span>🛒 السلة</span>
+          <span style={S.cartFabBadge}>{cartItems.length}</span>
+          <span style={{ color: "#22d3ee", fontWeight: 700, fontSize: 13 }}>
+            {finalTotal.toFixed(0)} ج
+          </span>
+        </button>
+      )}
     </div>
   );
 }
@@ -666,6 +792,7 @@ const S = {
     height: "calc(100vh - 100px)",
     display: "flex",
     flexDirection: "column",
+    position: "relative",
   },
   layout: {
     display: "flex",
@@ -673,6 +800,84 @@ const S = {
     flex: 1,
     overflow: "hidden",
   },
+  // ── Mobile Tab Switcher ──
+  mobileTabs: {
+    display: "none", // shown via media query
+    position: "sticky",
+    top: 0,
+    zIndex: 50,
+    background: "rgba(8,12,20,0.95)",
+    backdropFilter: "blur(10px)",
+    borderBottom: "1px solid rgba(255,255,255,0.06)",
+    padding: "8px 14px",
+    gap: 8,
+    flexShrink: 0,
+  },
+  mobileTab: {
+    flex: 1,
+    padding: "9px 12px",
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.07)",
+    background: "transparent",
+    color: "rgba(255,255,255,0.3)",
+    fontSize: 12,
+    fontFamily: "'Sora', sans-serif",
+    fontWeight: 600,
+    cursor: "pointer",
+    position: "relative",
+  },
+  mobileTabActive: {
+    border: "1px solid rgba(34,211,238,0.3)",
+    background: "rgba(34,211,238,0.08)",
+    color: "#22d3ee",
+  },
+  mobileTabBadge: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    background: "#22d3ee",
+    color: "#0a0f1a",
+    fontSize: 10,
+    fontWeight: 800,
+    width: 18,
+    height: 18,
+    borderRadius: "50%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // ── Floating Cart Button (mobile) ──
+  cartFab: {
+    display: "none", // shown via media query
+    position: "fixed",
+    bottom: 20,
+    left: "50%",
+    transform: "translateX(-50%)",
+    zIndex: 100,
+    background: "rgba(13,21,38,0.95)",
+    border: "1px solid rgba(34,211,238,0.3)",
+    borderRadius: 40,
+    padding: "12px 24px",
+    color: "#cbd5e1",
+    fontSize: 13,
+    fontFamily: "'Sora', sans-serif",
+    fontWeight: 600,
+    cursor: "pointer",
+    alignItems: "center",
+    gap: 10,
+    boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(34,211,238,0.1)",
+    backdropFilter: "blur(12px)",
+    whiteSpace: "nowrap",
+  },
+  cartFabBadge: {
+    background: "#22d3ee",
+    color: "#0a0f1a",
+    fontSize: 11,
+    fontWeight: 800,
+    padding: "2px 7px",
+    borderRadius: 20,
+  },
+  // ── Panels ──
   leftPanel: {
     flex: 1,
     display: "flex",
@@ -990,7 +1195,7 @@ const S = {
     transition: "all 0.2s",
     letterSpacing: "0.03em",
   },
-  // Insurance styles
+  // Insurance
   modalOverlay: {
     position: "fixed",
     inset: 0,
