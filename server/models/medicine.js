@@ -57,6 +57,12 @@ const medicineSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    barcode: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true, // عشان البحث بالباركود يكون سريع
+    },
     image: {
       type: String,
       default: "",

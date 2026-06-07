@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/Sultan";
-import { Plus, Search, Package2, AlertTriangle, X } from "lucide-react";
+import { Plus, Search, Package2, AlertTriangle, X, Trash2 } from "lucide-react";
 
 export default function Inventory() {
   const { apiFetch, isAdmin } = useAuth();
@@ -25,11 +25,13 @@ export default function Inventory() {
     expiryDate: "",
     description: "",
     requiresPrescription: false,
+    barcode: "",
   });
 
   const [restockId, setRestockId] = useState(null);
   const [restockQty, setRestockQty] = useState("");
   const [restockExpiry, setRestockExpiry] = useState("");
+  const [deleteId, setDeleteId] = useState(null); // { id, name }
 
   const load = async () => {
     try {
@@ -71,6 +73,7 @@ export default function Inventory() {
         expiryDate: "",
         description: "",
         requiresPrescription: false,
+        barcode: "",
       });
       load();
     } catch (e) {
@@ -92,6 +95,18 @@ export default function Inventory() {
       setRestockId(null);
       setRestockQty("");
       setRestockExpiry("");
+      load();
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  const doDelete = async () => {
+    try {
+      await apiFetch(`/pharmacy/medicine/delete/${deleteId.id}`, {
+        method: "DELETE",
+      });
+      setDeleteId(null);
       load();
     } catch (e) {
       alert(e.message);
@@ -428,23 +443,46 @@ export default function Inventory() {
                   )}
                 </div>
 
-                <button
-                  onClick={() => setRestockId(med._id)}
-                  style={{
-                    padding: "6px 14px",
-                    borderRadius: 10,
-                    border: "1px solid rgba(34,211,238,0.2)",
-                    background: "rgba(34,211,238,0.08)",
-                    color: "#22d3ee",
-                    fontSize: 12,
-                    fontFamily: "'Sora', sans-serif",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    minHeight: 36,
-                  }}
-                >
-                  شحن
-                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => setRestockId(med._id)}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 10,
+                      border: "1px solid rgba(34,211,238,0.2)",
+                      background: "rgba(34,211,238,0.08)",
+                      color: "#22d3ee",
+                      fontSize: 12,
+                      fontFamily: "'Sora', sans-serif",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      minHeight: 36,
+                    }}
+                  >
+                    شحن
+                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() =>
+                        setDeleteId({ id: med._id, name: med.name })
+                      }
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        border: "1px solid rgba(239,68,68,0.2)",
+                        background: "rgba(239,68,68,0.06)",
+                        color: "#ef4444",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -526,10 +564,14 @@ export default function Inventory() {
                 ["stock", "المخزون", "number"],
                 ["lowStockThreshold", "حد التنبيه", "number"],
                 ["expiryDate", "تاريخ الصلاحية", "date"],
+                ["barcode", "باركود الدواء", "text"],
               ].map(([k, l, t]) => (
                 <div
                   key={k}
-                  style={{ gridColumn: k === "name" ? "1 / -1" : "auto" }}
+                  style={{
+                    gridColumn:
+                      k === "name" || k === "barcode" ? "1 / -1" : "auto",
+                  }}
                 >
                   <label
                     style={{
@@ -545,6 +587,10 @@ export default function Inventory() {
                     type={t}
                     className="inv-modal-input"
                     value={form[k]}
+                    placeholder={
+                      k === "barcode" ? "امسح الباركود أو اكتبه يدوياً..." : ""
+                    }
+                    dir={k === "barcode" ? "ltr" : "rtl"}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, [k]: e.target.value }))
                     }
@@ -677,6 +723,109 @@ export default function Inventory() {
             >
               {adding ? "جارٍ الإضافة..." : "إضافة الدواء"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirm Modal */}
+      {deleteId && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            backdropFilter: "blur(6px)",
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 360,
+              background: "#0d1117",
+              border: "1px solid rgba(239,68,68,0.2)",
+              borderRadius: 20,
+              padding: 24,
+            }}
+          >
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 14,
+                background: "rgba(239,68,68,0.1)",
+                border: "1px solid rgba(239,68,68,0.2)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 16,
+              }}
+            >
+              <Trash2 size={20} style={{ color: "#ef4444" }} />
+            </div>
+            <h2
+              style={{
+                color: "#f1f5f9",
+                fontSize: 16,
+                fontWeight: 700,
+                margin: "0 0 8px",
+              }}
+            >
+              حذف الدواء؟
+            </h2>
+            <p
+              style={{
+                color: "#64748b",
+                fontSize: 13,
+                margin: "0 0 20px",
+                lineHeight: 1.6,
+              }}
+            >
+              هيتم إخفاء{" "}
+              <span style={{ color: "#cbd5e1", fontWeight: 600 }}>
+                {deleteId.name}
+              </span>{" "}
+              من النظام. مش هيتمسح نهائياً من الداتابيز.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={doDelete}
+                style={{
+                  flex: 1,
+                  height: 46,
+                  borderRadius: 12,
+                  background: "rgba(239,68,68,0.15)",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  color: "#ef4444",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  fontFamily: "'Sora', sans-serif",
+                  cursor: "pointer",
+                }}
+              >
+                تأكيد الحذف
+              </button>
+              <button
+                onClick={() => setDeleteId(null)}
+                style={{
+                  flex: 1,
+                  height: 46,
+                  borderRadius: 12,
+                  background: "transparent",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "#64748b",
+                  fontSize: 14,
+                  fontFamily: "'Sora', sans-serif",
+                  cursor: "pointer",
+                }}
+              >
+                إلغاء
+              </button>
+            </div>
           </div>
         </div>
       )}

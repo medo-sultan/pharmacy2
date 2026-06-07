@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../context/Sultan";
 
 const CATS_ALL = "الكل";
@@ -16,6 +16,13 @@ export default function POS() {
   const [success, setSuccess] = useState(null);
   const [error, setError] = useState("");
   const [mobileTab, setMobileTab] = useState("products"); // "products" | "cart"
+
+  // ── USB Barcode Scanner ──
+  const barcodeInputRef = useRef(null);
+  const barcodeBufferRef = useRef("");
+  const barcodeTimerRef = useRef(null);
+  const [barcodeFlash, setBarcodeFlash] = useState(null); // { type: "success"|"error", msg }
+  const [scannerFocused, setScannerFocused] = useState(true);
 
   // Insurance
   const INSURANCE_COMPANIES = [
@@ -81,6 +88,68 @@ export default function POS() {
   };
 
   const clearCart = () => setCart({});
+
+  // ── USB Barcode Handler ──
+  const handleBarcodeChar = useCallback(
+    (char) => {
+      // كل حرف بيجي من الجهاز بيتضاف للـ buffer
+      barcodeBufferRef.current += char;
+
+      // reset timer — لو مجاش input تاني في 100ms يعني انتهى الباركود
+      if (barcodeTimerRef.current) clearTimeout(barcodeTimerRef.current);
+      barcodeTimerRef.current = setTimeout(() => {
+        const scanned = barcodeBufferRef.current.trim();
+        barcodeBufferRef.current = "";
+        if (!scanned) return;
+
+        // ابحث عن الدواء بالباركود في الـ medicines المحملة
+        const found = medicines.find(
+          (m) => m.barcode && m.barcode.trim() === scanned,
+        );
+
+        if (found) {
+          if (found.stock <= 0 || found.isExpired) {
+            setBarcodeFlash({
+              type: "error",
+              msg: `❌ ${found.name} — غير متاح`,
+            });
+          } else {
+            addToCart(found);
+            setBarcodeFlash({
+              type: "success",
+              msg: `✅ تمت إضافة: ${found.name}`,
+            });
+          }
+        } else {
+          setBarcodeFlash({
+            type: "error",
+            msg: `⚠️ باركود غير موجود: ${scanned}`,
+          });
+        }
+
+        setTimeout(() => setBarcodeFlash(null), 2500);
+      }, 100);
+    },
+    [medicines, addToCart],
+  );
+
+  // ── Keep scanner input focused always ──
+  useEffect(() => {
+    const keepFocus = () => {
+      if (
+        barcodeInputRef.current &&
+        document.activeElement !== barcodeInputRef.current &&
+        // لو المستخدم بيكتب في input تاني متبدلش الـ focus
+        !["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName)
+      ) {
+        barcodeInputRef.current.focus();
+        setScannerFocused(true);
+      }
+    };
+    // راجع كل 500ms
+    const interval = setInterval(keepFocus, 500);
+    return () => clearInterval(interval);
+  }, []);
 
   const cartItems = Object.values(cart);
   const total = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
@@ -406,6 +475,109 @@ export default function POS() {
               <span style={S.mobileTabBadge}>{cartItems.length}</span>
             )}
           </button>
+        </div>
+
+        {/* ── Hidden Barcode Input (USB Scanner) ── */}
+        <input
+          ref={barcodeInputRef}
+          style={{
+            position: "fixed",
+            top: -999,
+            left: -999,
+            width: 1,
+            height: 1,
+            opacity: 0,
+            pointerEvents: "none",
+          }}
+          readOnly={false}
+          value=""
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val) {
+              // كل حرف بيجي من الجهاز بيتبعت للـ handler
+              for (const ch of val) handleBarcodeChar(ch);
+              // امسح الـ input عشان يستقبل اللي جاي
+              e.target.value = "";
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              handleBarcodeChar("\n");
+              e.preventDefault();
+            }
+          }}
+          onFocus={() => setScannerFocused(true)}
+          onBlur={() => setScannerFocused(false)}
+          aria-hidden="true"
+        />
+
+        {/* ── Barcode Flash Toast ── */}
+        {barcodeFlash && (
+          <div
+            style={{
+              position: "fixed",
+              top: 20,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 9999,
+              background:
+                barcodeFlash.type === "success"
+                  ? "rgba(16,185,129,0.95)"
+                  : "rgba(239,68,68,0.95)",
+              color: "#fff",
+              padding: "10px 22px",
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 700,
+              fontFamily: "'Sora', sans-serif",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+              backdropFilter: "blur(8px)",
+              whiteSpace: "nowrap",
+              pointerEvents: "none",
+            }}
+          >
+            {barcodeFlash.msg}
+          </div>
+        )}
+
+        {/* ── Scanner Status Indicator ── */}
+        <div
+          style={{
+            position: "fixed",
+            bottom: 14,
+            left: 14,
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            background: "rgba(0,0,0,0.6)",
+            border: `1px solid ${scannerFocused ? "rgba(34,211,238,0.3)" : "rgba(239,68,68,0.3)"}`,
+            padding: "5px 10px",
+            borderRadius: 20,
+            backdropFilter: "blur(6px)",
+            cursor: "pointer",
+          }}
+          onClick={() => barcodeInputRef.current?.focus()}
+        >
+          <div
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: "50%",
+              background: scannerFocused ? "#22d3ee" : "#ef4444",
+              boxShadow: scannerFocused ? "0 0 6px #22d3ee" : "none",
+            }}
+          />
+          <span
+            style={{
+              color: scannerFocused ? "#22d3ee" : "#ef4444",
+              fontSize: 10,
+              fontFamily: "'Sora', sans-serif",
+              fontWeight: 600,
+            }}
+          >
+            {scannerFocused ? "الباركود جاهز" : "اضغط لتفعيل الباركود"}
+          </span>
         </div>
 
         {/* ── Left Panel ── */}
