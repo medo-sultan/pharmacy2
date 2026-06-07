@@ -7,9 +7,11 @@ import mongoose from "mongoose";
 // ✅ Helper تسجيل الـ actions
 const log = async (staff, action, details = {}, ip = "") => {
   try {
+    const staffId = staff?._id || null;
+    if (!staffId) return; // Admin بدون _id — مش هنسجل في staffLog
     await staffLogModel.create({
-      staffId: staff._id,
-      staffName: staff.name,
+      staffId,
+      staffName: staff?.name || "Unknown",
       action,
       details,
       ip,

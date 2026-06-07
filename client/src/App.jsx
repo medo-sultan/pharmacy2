@@ -12,6 +12,7 @@ import { Reports } from "./pages/Reports";
 import { Sales } from "./pages/Sales";
 import BackArrow from "./components/BackArrow";
 import Barcode from "./components/Barcode";
+import Archives from "./pages/Archives";
 
 // ── Inner app (has auth context) ──────────────
 function PharmacyApp() {
@@ -48,6 +49,8 @@ function PharmacyApp() {
         return isAdmin ? <Reports /> : <Dashboard onNavigate={navigate} />;
       case "attendance":
         return isAdmin ? <Attendance /> : <Dashboard onNavigate={navigate} />;
+      case "archives":
+        return isAdmin ? <Archives /> : <Dashboard onNavigate={navigate} />;
       default:
         return <Dashboard onNavigate={navigate} />;
     }

@@ -508,7 +508,8 @@ export default function POS() {
           }}
           onFocus={() => setScannerFocused(true)}
           onBlur={() => setScannerFocused(false)}
-          aria-hidden="true"
+          tabIndex={-1}
+          aria-label="barcode scanner input"
         />
 
         {/* ── Barcode Flash Toast ── */}

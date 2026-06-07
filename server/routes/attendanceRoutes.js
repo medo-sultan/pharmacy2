@@ -100,7 +100,7 @@ attendanceRouter.put("/clockout", staffAuth(), async (req, res) => {
     const record = await attendanceModel.findOneAndUpdate(
       { staffId: staff._id, date: today, clockOut: null },
       { clockOut: new Date() },
-      { new: true },
+      { returnDocument: "after" },
     );
 
     if (!record) {

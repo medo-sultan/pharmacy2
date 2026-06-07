@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
+import archivesRouter from "./routes/archivesRoutes.js";
 
 dotenv.config();
 
@@ -47,6 +48,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/pharmacy", pharmacyRouter);
 app.use("/api/attendance", attendanceRouter);
 app.use("/api/barcode", barcodeRouter);
+app.use("/api/archives", archivesRouter);
 
 app.use((req, res) => res.status(404).json({ message: "Route not found" }));
 

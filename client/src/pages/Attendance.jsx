@@ -66,7 +66,7 @@ export default function Attendance() {
       });
       fetchAll();
     } catch (e) {
-      setError(e.message);
+      setError(e.message); // ✅ هيظهر الرسالة الحقيقية من السيرفر
     } finally {
       setActionLoading(false);
     }

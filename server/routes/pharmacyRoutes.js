@@ -154,7 +154,6 @@ pharmacyRouter.post("/medicine/add-json", adminAuth, async (req, res) => {
       expiryDate,
       manufacturer,
       description,
-      barcode,
     } = req.body;
 
     if (!name || !price || !expiryDate) {
@@ -175,7 +174,6 @@ pharmacyRouter.post("/medicine/add-json", adminAuth, async (req, res) => {
       expiryDate: new Date(expiryDate),
       manufacturer: manufacturer || "",
       description: description || "",
-      barcode: barcode || "",
       image: "",
     });
 
@@ -237,7 +235,7 @@ pharmacyRouter.put("/medicine/edit/:id", adminAuth, async (req, res) => {
     const medicine = await medicineModel.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true },
+      { returnDocument: "after" },
     );
     if (!medicine)
       return res.status(404).json({ success: false, message: "Not found" });
