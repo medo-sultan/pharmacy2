@@ -19,7 +19,22 @@ connectCloudinary();
 
 // ── Middleware: ضمان اتصال DB قبل أي request ──────────────
 // ده الحل الأساسي على Vercel Serverless
+// ── CORS & body parsing أولاً — قبل أي middleware تاني ──
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "token"],
+  }),
+);
+app.options(/(.*)/, cors()); // Handle preflight requests immediately
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+// ── DB connection middleware — بعد CORS عشان OPTIONS تعدي بدون DB ──
 app.use(async (req, res, next) => {
+  // OPTIONS preflight مش محتاج DB
+  if (req.method === "OPTIONS") return next();
   try {
     await connectDB();
     next();
@@ -31,16 +46,6 @@ app.use(async (req, res, next) => {
     });
   }
 });
-
-app.use(
-  cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "token"],
-  }),
-);
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 app.get("/", (req, res) => res.json({ message: "API running..." }));
 

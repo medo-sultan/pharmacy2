@@ -48,30 +48,14 @@ export function AuthProvider({ children }) {
     }
   });
 
-  // ── تحقق من انتهاء الجلسة عند كل فتح للتطبيق ──
-  useEffect(() => {
-    if (token && !isSessionValid()) {
-      performLogout(false); // silent logout بدون clockout
-    }
-  }, []);
-
-  // ── timer يسجّل خروج تلقائي عند انتهاء الجلسة ──
-  useEffect(() => {
-    if (!token) return;
-    const expires = Number(localStorage.getItem("ph_expires"));
-    const remaining = expires - Date.now();
-    if (remaining <= 0) {
-      performLogout(false);
-      return;
-    }
-
-    const timer = setTimeout(() => performLogout(false), remaining);
-    return () => clearTimeout(timer);
-  }, [token]);
-
   // ── logout الأساسي ──
   const performLogout = useCallback(async (clockout = true) => {
-    if (clockout) {
+    // Admin مش موظف — مش محتاج clockout
+    const currentStaff = JSON.parse(localStorage.getItem("ph_staff") || "{}");
+    const isAdminSession =
+      currentStaff?.isAdmin || currentStaff?.role === "admin";
+
+    if (clockout && !isAdminSession) {
       const t = localStorage.getItem("ph_token");
       try {
         await fetch(`${BASE}/attendance/clockout`, {
@@ -89,6 +73,26 @@ export function AuthProvider({ children }) {
     setToken(null);
     setStaff(null);
   }, []);
+
+  // ── تحقق من انتهاء الجلسة عند كل فتح للتطبيق ──
+  useEffect(() => {
+    if (token && !isSessionValid()) {
+      performLogout(false);
+    }
+  }, [performLogout]);
+
+  // ── timer يسجّل خروج تلقائي عند انتهاء الجلسة ──
+  useEffect(() => {
+    if (!token) return;
+    const expires = Number(localStorage.getItem("ph_expires"));
+    const remaining = expires - Date.now();
+    if (remaining <= 0) {
+      performLogout(false);
+      return;
+    }
+    const timer = setTimeout(() => performLogout(false), remaining);
+    return () => clearTimeout(timer);
+  }, [token, performLogout]);
 
   const login = useCallback(async (email, password) => {
     const res = await fetch(`${BASE}/pharmacy/login`, {

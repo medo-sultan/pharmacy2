@@ -58,13 +58,6 @@ const getInventory = async (req, res) => {
         })),
     };
 
-    await log(
-      req.staff,
-      "VIEW_INVENTORY",
-      { totalItems: medicines.length },
-      req.ip,
-    );
-
     res.json({ success: true, medicines, alerts });
   } catch (err) {
     console.error(err);
@@ -247,11 +240,19 @@ const dispensePrescription = async (req, res) => {
         .json({ success: false, message: "Already dispensed" });
     }
 
+    // ✅ جيب كل الأدوية في query واحدة
+    const rxMedIds = prescription.medicines.map((m) => m.medicineId);
+    const rxMeds = await medicineModel
+      .find({ _id: { $in: rxMedIds } })
+      .session(session);
+    const rxMedMap = {};
+    rxMeds.forEach((m) => {
+      rxMedMap[m._id.toString()] = m;
+    });
+
     // تأكيد الكميات قبل الخصم
     for (const item of prescription.medicines) {
-      const med = await medicineModel
-        .findById(item.medicineId)
-        .session(session);
+      const med = rxMedMap[item.medicineId?.toString()];
       if (!med || med.stock < item.quantity) {
         await session.abortTransaction();
         return res.status(400).json({
@@ -261,17 +262,17 @@ const dispensePrescription = async (req, res) => {
       }
     }
 
-    // خصم المخزون
-    for (const item of prescription.medicines) {
-      await medicineModel.findByIdAndUpdate(
-        item.medicineId,
-        {
+    // ✅ خصم المخزون بـ bulkWrite واحدة
+    const rxBulkOps = prescription.medicines.map((item) => ({
+      updateOne: {
+        filter: { _id: item.medicineId },
+        update: {
           $inc: { stock: -item.quantity },
           ...(req.staff._id && { lastUpdatedBy: req.staff._id }),
         },
-        { session },
-      );
-    }
+      },
+    }));
+    await medicineModel.bulkWrite(rxBulkOps, { session });
 
     // تحديث الوصفة
     prescription.status = "dispensed";
@@ -395,12 +396,21 @@ const makeSale = async (req, res) => {
     let rawTotal = 0;
     const enrichedItems = [];
 
-    for (const item of items) {
-      const medicine = await medicineModel
-        .findById(item.medicineId)
-        .session(session);
+    // ✅ جيب كل الأدوية في query واحدة بدل loop
+    const medicineIds = items.map((i) => i.medicineId);
+    const medicines = await medicineModel
+      .find({ _id: { $in: medicineIds }, isActive: true })
+      .session(session);
 
-      if (!medicine || !medicine.isActive) {
+    const medicineMap = {};
+    medicines.forEach((m) => {
+      medicineMap[m._id.toString()] = m;
+    });
+
+    for (const item of items) {
+      const medicine = medicineMap[item.medicineId?.toString()];
+
+      if (!medicine) {
         await session.abortTransaction();
         return res.status(404).json({
           success: false,
@@ -432,16 +442,19 @@ const makeSale = async (req, res) => {
         unitPrice: medicine.price,
         subtotal,
       });
+    }
 
-      await medicineModel.findByIdAndUpdate(
-        medicine._id,
-        {
+    // ✅ تحديث المخزون بـ bulkWrite واحدة بدل loop من findByIdAndUpdate
+    const bulkOps = enrichedItems.map((item) => ({
+      updateOne: {
+        filter: { _id: item.medicineId },
+        update: {
           $inc: { stock: -item.quantity },
           ...(req.staff._id && { lastUpdatedBy: req.staff._id }),
         },
-        { session },
-      );
-    }
+      },
+    }));
+    await medicineModel.bulkWrite(bulkOps, { session });
 
     const isInsurance = paymentMethod === "insurance" && discountPercent > 0;
     const appliedDiscount = isInsurance
