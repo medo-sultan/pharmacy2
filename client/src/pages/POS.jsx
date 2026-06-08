@@ -15,16 +15,14 @@ export default function POS() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(null);
   const [error, setError] = useState("");
-  const [mobileTab, setMobileTab] = useState("products"); // "products" | "cart"
+  const [mobileTab, setMobileTab] = useState("products");
 
-  // ── USB Barcode Scanner ──
   const barcodeInputRef = useRef(null);
   const barcodeBufferRef = useRef("");
   const barcodeTimerRef = useRef(null);
-  const [barcodeFlash, setBarcodeFlash] = useState(null); // { type: "success"|"error", msg }
+  const [barcodeFlash, setBarcodeFlash] = useState(null);
   const [scannerFocused, setScannerFocused] = useState(true);
 
-  // Insurance
   const INSURANCE_COMPANIES = [
     { id: "qawmi", name: "الشركة القومية للتأمين", discount: 0.75 },
     { id: "muttahida", name: "المتحدة", discount: 0.85 },
@@ -45,7 +43,6 @@ export default function POS() {
     CATS_ALL,
     ...new Set(medicines.map((m) => m.category).filter(Boolean)),
   ];
-
   const filtered = medicines.filter((m) => {
     const matchCat = activeCat === CATS_ALL || m.category === activeCat;
     const matchQ =
@@ -54,7 +51,7 @@ export default function POS() {
     return matchCat && matchQ && m.stock > 0 && !m.isExpired;
   });
 
-  const addToCart = (med) => {
+  const addToCart = useCallback((med) => {
     setCart((prev) => {
       const ex = prev[med._id];
       if (ex) {
@@ -63,7 +60,7 @@ export default function POS() {
       }
       return { ...prev, [med._id]: { ...med, qty: 1 } };
     });
-  };
+  }, []);
 
   const setQty = (id, delta) => {
     setCart((prev) => {
@@ -71,42 +68,33 @@ export default function POS() {
       if (!item) return prev;
       const newQty = item.qty + delta;
       if (newQty <= 0) {
-        const next = { ...prev };
-        delete next[id];
-        return next;
+        const n = { ...prev };
+        delete n[id];
+        return n;
       }
       return { ...prev, [id]: { ...item, qty: Math.min(newQty, item.stock) } };
     });
   };
 
-  const removeItem = (id) => {
+  const removeItem = (id) =>
     setCart((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
+      const n = { ...prev };
+      delete n[id];
+      return n;
     });
-  };
-
   const clearCart = () => setCart({});
 
-  // ── USB Barcode Handler ──
   const handleBarcodeChar = useCallback(
     (char) => {
-      // كل حرف بيجي من الجهاز بيتضاف للـ buffer
       barcodeBufferRef.current += char;
-
-      // reset timer — لو مجاش input تاني في 100ms يعني انتهى الباركود
       if (barcodeTimerRef.current) clearTimeout(barcodeTimerRef.current);
       barcodeTimerRef.current = setTimeout(() => {
         const scanned = barcodeBufferRef.current.trim();
         barcodeBufferRef.current = "";
         if (!scanned) return;
-
-        // ابحث عن الدواء بالباركود في الـ medicines المحملة
         const found = medicines.find(
           (m) => m.barcode && m.barcode.trim() === scanned,
         );
-
         if (found) {
           if (found.stock <= 0 || found.isExpired) {
             setBarcodeFlash({
@@ -126,34 +114,29 @@ export default function POS() {
             msg: `⚠️ باركود غير موجود: ${scanned}`,
           });
         }
-
         setTimeout(() => setBarcodeFlash(null), 2500);
       }, 100);
     },
     [medicines, addToCart],
   );
 
-  // ── Keep scanner input focused always ──
   useEffect(() => {
     const keepFocus = () => {
       if (
         barcodeInputRef.current &&
         document.activeElement !== barcodeInputRef.current &&
-        // لو المستخدم بيكتب في input تاني متبدلش الـ focus
         !["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName)
       ) {
         barcodeInputRef.current.focus();
         setScannerFocused(true);
       }
     };
-    // راجع كل 500ms
     const interval = setInterval(keepFocus, 500);
     return () => clearInterval(interval);
   }, []);
 
   const cartItems = Object.values(cart);
   const total = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
-
   const activeInsurance =
     paymentMethod === "insurance" ? insuranceCompany : null;
   const discountAmount = activeInsurance ? total * activeInsurance.discount : 0;
@@ -167,10 +150,7 @@ export default function POS() {
       await apiFetch("/pharmacy/sale", {
         method: "POST",
         body: JSON.stringify({
-          items: cartItems.map((c) => ({
-            medicineId: c._id,
-            quantity: c.qty,
-          })),
+          items: cartItems.map((c) => ({ medicineId: c._id, quantity: c.qty })),
           paymentMethod,
           patientName,
           totalAmount: finalTotal,
@@ -198,404 +178,565 @@ export default function POS() {
     }
   };
 
-  return (
-    <div style={S.page}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap');
-        @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-        .med-card{transition:border-color 0.15s,background 0.15s}
-        .med-card:hover{background:rgba(34,211,238,0.04)!important;border-color:rgba(34,211,238,0.25)!important}
-        .med-card:hover .add-pill{opacity:1!important}
-        .med-card.in-cart{border-color:rgba(34,211,238,0.35)!important}
-        .pay-opt{transition:all 0.15s}
-        .qty-btn:hover{background:rgba(255,255,255,0.1)!important}
-        .sell-btn:hover:not(:disabled){background:rgba(34,211,238,0.18)!important}
-        .cat-btn{transition:all 0.15s}
-        ::-webkit-scrollbar{width:4px;height:4px}
-        ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:4px}
+  const payIcons = { cash: "💵", card: "💳", insurance: "🛡️" };
+  const payLabels = { cash: "نقدي", card: "بطاقة", insurance: "تأمين" };
 
-        /* ── Mobile styles ── */
+  return (
+    <div
+      style={{
+        fontFamily: "'Sora', sans-serif",
+        color: "#e2e8f0",
+        height: "calc(100vh - 80px)",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
+      }}
+    >
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
+
+        * { box-sizing: border-box; }
+
+        /* ── animations ── */
+        @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes pop { 0%{transform:scale(0.94)} 60%{transform:scale(1.03)} 100%{transform:scale(1)} }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(-16px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+        /* ── cards ── */
+        .med-card {
+          transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+          cursor: pointer;
+          animation: fadeUp 0.28s ease both;
+        }
+        .med-card:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 12px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(56,189,248,0.3) !important;
+          border-color: rgba(56,189,248,0.4) !important;
+        }
+        .med-card:active { transform: scale(0.97); }
+        .med-card.in-cart { border-color: rgba(52,211,153,0.5) !important; box-shadow: 0 0 0 1px rgba(52,211,153,0.2), inset 0 0 20px rgba(52,211,153,0.04) !important; }
+        .med-card.in-cart .add-pill { background: rgba(52,211,153,0.2) !important; border-color: rgba(52,211,153,0.4) !important; color: #34d399 !important; opacity: 1 !important; }
+
+        /* ── buttons ── */
+        .cat-pill { transition: all 0.15s; }
+        .cat-pill:hover { border-color: rgba(56,189,248,0.4) !important; color: rgba(56,189,248,0.8) !important; }
+        .qty-btn:hover { background: rgba(255,255,255,0.12) !important; }
+        .pay-btn { transition: all 0.2s; }
+        .pay-btn:hover { transform: translateY(-1px); }
+        .sell-btn { transition: all 0.2s; position: relative; overflow: hidden; }
+        .sell-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(52,211,153,0.25) !important; }
+        .sell-btn:active:not(:disabled) { transform: translateY(0); }
+        .sell-btn::after { content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.07) 50%,transparent 60%); background-size:200% 100%; opacity:0; transition:opacity 0.3s; }
+        .sell-btn:hover::after { opacity:1; animation: shimmer 1.2s linear infinite; }
+
+        /* ── cart item ── */
+        .cart-item { transition: background 0.15s; }
+        .cart-item:hover { background: rgba(255,255,255,0.04) !important; }
+        .rm-btn:hover { color: rgba(239,68,68,0.9) !important; }
+
+        /* ── scrollbar ── */
+        ::-webkit-scrollbar { width: 3px; height: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+        /* ── mobile ── */
         @media (max-width: 640px) {
-          .pos-layout {
-            flex-direction: column !important;
-            gap: 0 !important;
-            height: 100% !important;
-          }
-          .pos-left-panel {
-            flex: 1 !important;
-            border-radius: 12px 12px 0 0 !important;
-            border-bottom: none !important;
-            display: flex !important;
-            flex-direction: column !important;
-            min-height: 0 !important;
-          }
-          .pos-right-panel {
-            width: 100% !important;
-            flex-shrink: 0 !important;
-            border-radius: 0 !important;
-            border-top: 1px solid rgba(255,255,255,0.08) !important;
-            max-height: none !important;
-          }
-          .pos-panel-head {
-            flex-wrap: nowrap !important;
-            padding: 12px 14px 10px !important;
-            gap: 8px !important;
-          }
-          .pos-search {
-            width: 130px !important;
-            font-size: 11px !important;
-          }
-          .pos-grid {
-            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
-            padding: 12px 14px !important;
-            gap: 8px !important;
-          }
-          .pos-cats-bar {
-            padding: 8px 14px !important;
-          }
-          /* Mobile tab switcher */
-          .mobile-tabs {
-            display: flex !important;
-          }
-          /* Hide panels based on active tab */
-          .pos-left-panel.mobile-hidden {
-            display: none !important;
-          }
-          .pos-right-panel.mobile-hidden {
-            display: none !important;
-          }
-          /* Cart footer on mobile: compact */
-          .pos-cart-foot {
-            padding: 12px 14px !important;
-            gap: 8px !important;
-          }
-          .pos-cart-body {
-            max-height: 220px !important;
-            padding: 10px 14px !important;
-          }
-          .pos-total-val {
-            font-size: 18px !important;
-          }
-          /* Floating cart button on mobile */
-          .mobile-cart-fab {
-            display: flex !important;
-          }
+          .pos-layout { flex-direction: column !important; height: 100% !important; gap: 0 !important; }
+          .left-panel { border-radius: 0 !important; border: none !important; border-bottom: 1px solid rgba(255,255,255,0.07) !important; }
+          .right-panel { width: 100% !important; border-radius: 0 !important; border: none !important; border-top: 1px solid rgba(255,255,255,0.07) !important; }
+          .pos-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important; padding: 10px 12px !important; gap: 8px !important; }
+          .panel-head { padding: 10px 12px !important; }
+          .cats-bar { padding: 8px 12px !important; }
+          .cart-body { max-height: 200px !important; }
+          .cart-foot { padding: 12px 14px !important; }
+          .panel-hidden { display: none !important; }
+          .mobile-tabs { display: flex !important; }
+          .mobile-fab { display: flex !important; }
         }
         @media (min-width: 641px) {
           .mobile-tabs { display: none !important; }
-          .mobile-cart-fab { display: none !important; }
-          .pos-left-panel.mobile-hidden,
-          .pos-right-panel.mobile-hidden {
-            display: flex !important;
-          }
+          .mobile-fab { display: none !important; }
+          .panel-hidden { display: flex !important; }
         }
       `}</style>
 
-      <div className="pos-layout" style={S.layout}>
-        {/* ── Insurance Modal ── */}
-        {showInsuranceModal && (
-          <div style={S.modalOverlay}>
-            <div style={S.modal}>
-              <div style={S.modalHead}>
-                <span style={S.modalTitle}>🛡️ بيانات التأمين</span>
-                <button
-                  onClick={() => setShowInsuranceModal(false)}
-                  style={S.modalClose}
-                >
-                  ×
-                </button>
-              </div>
+      {/* ── Barcode input (hidden) ── */}
+      <input
+        ref={barcodeInputRef}
+        style={{
+          position: "fixed",
+          top: -999,
+          left: -999,
+          width: 1,
+          height: 1,
+          opacity: 0,
+          pointerEvents: "none",
+        }}
+        value=""
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v) {
+            for (const ch of v) handleBarcodeChar(ch);
+            e.target.value = "";
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            handleBarcodeChar("\n");
+            e.preventDefault();
+          }
+        }}
+        onFocus={() => setScannerFocused(true)}
+        onBlur={() => setScannerFocused(false)}
+        tabIndex={-1}
+        readOnly={false}
+      />
 
-              <div style={S.modalBody}>
-                <p style={S.fieldLabel}>شركة التأمين</p>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                    marginBottom: 16,
-                  }}
-                >
-                  {INSURANCE_COMPANIES.map((co) => (
-                    <button
-                      key={co.id}
-                      onClick={() => setInsuranceCompany(co)}
-                      style={{
-                        ...S.insOption,
-                        ...(insuranceCompany?.id === co.id
-                          ? S.insOptionActive
-                          : {}),
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <span>{co.name}</span>
-                        <span
-                          style={{
-                            background:
-                              insuranceCompany?.id === co.id
-                                ? "rgba(34,211,238,0.15)"
-                                : "rgba(255,255,255,0.06)",
-                            color:
-                              insuranceCompany?.id === co.id
-                                ? "#22d3ee"
-                                : "rgba(255,255,255,0.4)",
-                            fontSize: 11,
-                            fontWeight: 700,
-                            padding: "2px 8px",
-                            borderRadius: 20,
-                          }}
-                        >
-                          خصم {co.discount * 100}%
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                <p style={S.fieldLabel}>رقم بطاقة التأمين</p>
-                <input
-                  style={{ ...S.patientInput, marginBottom: 16 }}
-                  placeholder="أدخل رقم البطاقة..."
-                  value={insuranceCardNumber}
-                  onChange={(e) => setInsuranceCardNumber(e.target.value)}
-                  dir="ltr"
-                />
-
-                {insuranceCompany && (
-                  <div style={S.insPreview}>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: 6,
-                      }}
-                    >
-                      <span
-                        style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}
-                      >
-                        الإجمالي قبل الخصم
-                      </span>
-                      <span style={{ color: "#cbd5e1", fontSize: 12 }}>
-                        {total.toFixed(2)} ج
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: 6,
-                      }}
-                    >
-                      <span
-                        style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}
-                      >
-                        نسبة الخصم
-                      </span>
-                      <span style={{ color: "#f59e0b", fontSize: 12 }}>
-                        - {insuranceCompany.discount * 100}%
-                      </span>
-                    </div>
-                    <div style={S.insDivider} />
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <span
-                        style={{
-                          color: "rgba(255,255,255,0.6)",
-                          fontSize: 13,
-                          fontWeight: 600,
-                        }}
-                      >
-                        المبلغ المتبقي
-                      </span>
-                      <span
-                        style={{
-                          color: "#22d3ee",
-                          fontSize: 16,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {(total - total * insuranceCompany.discount).toFixed(2)}{" "}
-                        ج
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  onClick={() => {
-                    if (!insuranceCompany) return;
-                    setShowInsuranceModal(false);
-                  }}
-                  style={{
-                    ...S.sellBtn,
-                    opacity: insuranceCompany ? 1 : 0.35,
-                    marginTop: 4,
-                  }}
-                  disabled={!insuranceCompany}
-                >
-                  ✔ تأكيد التأمين
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Mobile Tab Switcher ── */}
-        <div className="mobile-tabs" style={S.mobileTabs}>
-          <button
-            onClick={() => setMobileTab("products")}
-            style={{
-              ...S.mobileTab,
-              ...(mobileTab === "products" ? S.mobileTabActive : {}),
-            }}
-          >
-            🏪 الأدوية
-          </button>
-          <button
-            onClick={() => setMobileTab("cart")}
-            style={{
-              ...S.mobileTab,
-              ...(mobileTab === "cart" ? S.mobileTabActive : {}),
-              position: "relative",
-            }}
-          >
-            🛒 السلة
-            {cartItems.length > 0 && (
-              <span style={S.mobileTabBadge}>{cartItems.length}</span>
-            )}
-          </button>
-        </div>
-
-        {/* ── Hidden Barcode Input (USB Scanner) ── */}
-        <input
-          ref={barcodeInputRef}
+      {/* ── Barcode Toast ── */}
+      {barcodeFlash && (
+        <div
           style={{
             position: "fixed",
-            top: -999,
-            left: -999,
-            width: 1,
-            height: 1,
-            opacity: 0,
+            top: 20,
+            left: "50%",
+            zIndex: 9999,
+            animation: "toastIn 0.25s ease both",
+            background:
+              barcodeFlash.type === "success"
+                ? "linear-gradient(135deg,#059669,#10b981)"
+                : "linear-gradient(135deg,#dc2626,#ef4444)",
+            color: "#fff",
+            padding: "11px 24px",
+            borderRadius: 14,
+            fontSize: 13,
+            fontWeight: 700,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+            whiteSpace: "nowrap",
             pointerEvents: "none",
           }}
-          readOnly={false}
-          value=""
-          onChange={(e) => {
-            const val = e.target.value;
-            if (val) {
-              // كل حرف بيجي من الجهاز بيتبعت للـ handler
-              for (const ch of val) handleBarcodeChar(ch);
-              // امسح الـ input عشان يستقبل اللي جاي
-              e.target.value = "";
-            }
+        >
+          {barcodeFlash.msg}
+        </div>
+      )}
+
+      {/* ── Scanner badge ── */}
+      <div
+        onClick={() => barcodeInputRef.current?.focus()}
+        style={{
+          position: "fixed",
+          bottom: 16,
+          left: 16,
+          zIndex: 100,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          background: "rgba(6,10,20,0.85)",
+          border: `1px solid ${scannerFocused ? "rgba(56,189,248,0.35)" : "rgba(239,68,68,0.35)"}`,
+          padding: "5px 11px",
+          borderRadius: 20,
+          backdropFilter: "blur(8px)",
+          cursor: "pointer",
+        }}
+      >
+        <div
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: scannerFocused ? "#38bdf8" : "#ef4444",
+            boxShadow: scannerFocused ? "0 0 6px #38bdf8" : "none",
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              handleBarcodeChar("\n");
-              e.preventDefault();
-            }
-          }}
-          onFocus={() => setScannerFocused(true)}
-          onBlur={() => setScannerFocused(false)}
-          tabIndex={-1}
-          aria-label="barcode scanner input"
         />
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 600,
+            color: scannerFocused ? "#38bdf8" : "#ef4444",
+          }}
+        >
+          {scannerFocused ? "الباركود جاهز" : "اضغط لتفعيل"}
+        </span>
+      </div>
 
-        {/* ── Barcode Flash Toast ── */}
-        {barcodeFlash && (
-          <div
-            style={{
-              position: "fixed",
-              top: 20,
-              left: "50%",
-              transform: "translateX(-50%)",
-              zIndex: 9999,
-              background:
-                barcodeFlash.type === "success"
-                  ? "rgba(16,185,129,0.95)"
-                  : "rgba(239,68,68,0.95)",
-              color: "#fff",
-              padding: "10px 22px",
-              borderRadius: 12,
-              fontSize: 14,
-              fontWeight: 700,
-              fontFamily: "'Sora', sans-serif",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-              backdropFilter: "blur(8px)",
-              whiteSpace: "nowrap",
-              pointerEvents: "none",
-            }}
-          >
-            {barcodeFlash.msg}
-          </div>
-        )}
-
-        {/* ── Scanner Status Indicator ── */}
+      {/* ── Insurance Modal ── */}
+      {showInsuranceModal && (
         <div
           style={{
             position: "fixed",
-            bottom: 14,
-            left: 14,
-            zIndex: 100,
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            backdropFilter: "blur(6px)",
+            zIndex: 1000,
             display: "flex",
             alignItems: "center",
-            gap: 6,
-            background: "rgba(0,0,0,0.6)",
-            border: `1px solid ${scannerFocused ? "rgba(34,211,238,0.3)" : "rgba(239,68,68,0.3)"}`,
-            padding: "5px 10px",
-            borderRadius: 20,
-            backdropFilter: "blur(6px)",
-            cursor: "pointer",
+            justifyContent: "center",
+            padding: 16,
           }}
-          onClick={() => barcodeInputRef.current?.focus()}
         >
           <div
             style={{
-              width: 7,
-              height: 7,
-              borderRadius: "50%",
-              background: scannerFocused ? "#22d3ee" : "#ef4444",
-              boxShadow: scannerFocused ? "0 0 6px #22d3ee" : "none",
-            }}
-          />
-          <span
-            style={{
-              color: scannerFocused ? "#22d3ee" : "#ef4444",
-              fontSize: 10,
-              fontFamily: "'Sora', sans-serif",
-              fontWeight: 600,
+              background: "#070d1a",
+              border: "1px solid rgba(56,189,248,0.15)",
+              borderRadius: 20,
+              width: "100%",
+              maxWidth: 380,
+              boxShadow: "0 32px 80px rgba(0,0,0,0.7)",
+              overflow: "hidden",
             }}
           >
-            {scannerFocused ? "الباركود جاهز" : "اضغط لتفعيل الباركود"}
-          </span>
+            <div
+              style={{
+                padding: "18px 20px 14px",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <span style={{ color: "#f1f5f9", fontSize: 15, fontWeight: 700 }}>
+                🛡️ بيانات التأمين
+              </span>
+              <button
+                onClick={() => setShowInsuranceModal(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "rgba(255,255,255,0.3)",
+                  fontSize: 22,
+                  cursor: "pointer",
+                  lineHeight: 1,
+                  padding: 0,
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <div
+              style={{
+                padding: "18px 20px 20px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+              }}
+            >
+              <p
+                style={{
+                  color: "rgba(255,255,255,0.4)",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  margin: "0 0 4px",
+                }}
+              >
+                شركة التأمين
+              </p>
+              {INSURANCE_COMPANIES.map((co) => (
+                <button
+                  key={co.id}
+                  onClick={() => setInsuranceCompany(co)}
+                  style={{
+                    background:
+                      insuranceCompany?.id === co.id
+                        ? "rgba(56,189,248,0.08)"
+                        : "rgba(255,255,255,0.02)",
+                    border: `1px solid ${insuranceCompany?.id === co.id ? "rgba(56,189,248,0.4)" : "rgba(255,255,255,0.07)"}`,
+                    borderRadius: 12,
+                    padding: "11px 14px",
+                    cursor: "pointer",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <span
+                    style={{
+                      color:
+                        insuranceCompany?.id === co.id ? "#f1f5f9" : "#94a3b8",
+                      fontSize: 13,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {co.name}
+                  </span>
+                  <span
+                    style={{
+                      background:
+                        insuranceCompany?.id === co.id
+                          ? "rgba(56,189,248,0.15)"
+                          : "rgba(255,255,255,0.05)",
+                      color:
+                        insuranceCompany?.id === co.id
+                          ? "#38bdf8"
+                          : "rgba(255,255,255,0.3)",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "3px 9px",
+                      borderRadius: 20,
+                    }}
+                  >
+                    خصم {co.discount * 100}%
+                  </span>
+                </button>
+              ))}
+              <p
+                style={{
+                  color: "rgba(255,255,255,0.4)",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  margin: "8px 0 4px",
+                }}
+              >
+                رقم البطاقة
+              </p>
+              <input
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 10,
+                  padding: "10px 14px",
+                  color: "#cbd5e1",
+                  fontSize: 13,
+                  fontFamily: "'Sora',sans-serif",
+                  outline: "none",
+                  width: "100%",
+                }}
+                placeholder="أدخل رقم البطاقة..."
+                value={insuranceCardNumber}
+                onChange={(e) => setInsuranceCardNumber(e.target.value)}
+                dir="ltr"
+              />
+              {insuranceCompany && (
+                <div
+                  style={{
+                    background: "rgba(56,189,248,0.04)",
+                    border: "1px solid rgba(56,189,248,0.1)",
+                    borderRadius: 12,
+                    padding: "12px 14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: 5,
+                    }}
+                  >
+                    <span
+                      style={{ color: "rgba(255,255,255,0.35)", fontSize: 12 }}
+                    >
+                      قبل الخصم
+                    </span>
+                    <span style={{ color: "#94a3b8", fontSize: 12 }}>
+                      {total.toFixed(2)} ج
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <span
+                      style={{ color: "rgba(255,255,255,0.35)", fontSize: 12 }}
+                    >
+                      الخصم
+                    </span>
+                    <span
+                      style={{
+                        color: "#f59e0b",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      - {insuranceCompany.discount * 100}%
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      height: 1,
+                      background: "rgba(255,255,255,0.06)",
+                      margin: "0 0 8px",
+                    }}
+                  />
+                  <div
+                    style={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <span
+                      style={{
+                        color: "rgba(255,255,255,0.6)",
+                        fontSize: 13,
+                        fontWeight: 600,
+                      }}
+                    >
+                      المبلغ المتبقي
+                    </span>
+                    <span
+                      style={{
+                        color: "#38bdf8",
+                        fontSize: 17,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {(total - total * insuranceCompany.discount).toFixed(2)} ج
+                    </span>
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  if (insuranceCompany) setShowInsuranceModal(false);
+                }}
+                disabled={!insuranceCompany}
+                style={{
+                  height: 46,
+                  borderRadius: 12,
+                  border: "1px solid rgba(52,211,153,0.3)",
+                  background: "rgba(52,211,153,0.1)",
+                  color: "#34d399",
+                  fontSize: 13,
+                  fontFamily: "'Sora',sans-serif",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  opacity: insuranceCompany ? 1 : 0.35,
+                  marginTop: 4,
+                }}
+              >
+                ✔ تأكيد التأمين
+              </button>
+            </div>
+          </div>
         </div>
+      )}
 
-        {/* ── Left Panel ── */}
+      {/* ── Mobile Tabs ── */}
+      <div
+        className="mobile-tabs"
+        style={{
+          display: "none",
+          background: "rgba(5,9,18,0.98)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          padding: "8px 12px",
+          gap: 8,
+          flexShrink: 0,
+        }}
+      >
+        {[
+          ["products", "🏪 الأدوية"],
+          ["cart", "🛒 السلة"],
+        ].map(([tab, label]) => (
+          <button
+            key={tab}
+            onClick={() => setMobileTab(tab)}
+            style={{
+              flex: 1,
+              padding: "9px 12px",
+              borderRadius: 10,
+              fontFamily: "'Sora',sans-serif",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              position: "relative",
+              border:
+                mobileTab === tab
+                  ? "1px solid rgba(56,189,248,0.35)"
+                  : "1px solid rgba(255,255,255,0.07)",
+              background:
+                mobileTab === tab ? "rgba(56,189,248,0.1)" : "transparent",
+              color: mobileTab === tab ? "#38bdf8" : "rgba(255,255,255,0.3)",
+            }}
+          >
+            {label}
+            {tab === "cart" && cartItems.length > 0 && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: -6,
+                  right: -6,
+                  background: "#34d399",
+                  color: "#020b12",
+                  fontSize: 9,
+                  fontWeight: 800,
+                  width: 17,
+                  height: 17,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {cartItems.length}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Main Layout ── */}
+      <div
+        className="pos-layout"
+        style={{
+          display: "flex",
+          gap: 14,
+          flex: 1,
+          overflow: "hidden",
+          padding: "0",
+        }}
+      >
+        {/* ══════════════ LEFT PANEL ══════════════ */}
         <div
-          className={`pos-left-panel${mobileTab === "cart" ? " mobile-hidden" : ""}`}
-          style={S.leftPanel}
+          className={`left-panel${mobileTab === "cart" ? " panel-hidden" : ""}`}
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            background: "rgba(5,9,18,0.7)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: 16,
+            overflow: "hidden",
+            minWidth: 0,
+            backdropFilter: "blur(12px)",
+          }}
         >
           {/* Header */}
-          <div className="pos-panel-head" style={S.panelHead}>
+          <div
+            className="panel-head"
+            style={{
+              padding: "14px 18px 12px",
+              borderBottom: "1px solid rgba(255,255,255,0.05)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={S.headIcon}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background:
+                    "linear-gradient(135deg,rgba(56,189,248,0.15),rgba(56,189,248,0.05))",
+                  border: "1px solid rgba(56,189,248,0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
                 <svg
                   width="16"
                   height="16"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="#22d3ee"
+                  stroke="#38bdf8"
                   strokeWidth="1.5"
                   strokeLinecap="round"
                 >
@@ -605,29 +746,99 @@ export default function POS() {
                 </svg>
               </div>
               <div>
-                <h1 style={S.panelTitle}>نقطة البيع</h1>
-                <p style={S.panelSub}>{filtered.length} دواء متاح</p>
+                <h1
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: "#f1f5f9",
+                    margin: 0,
+                  }}
+                >
+                  نقطة البيع
+                </h1>
+                <p
+                  style={{
+                    fontSize: 10,
+                    color: "rgba(255,255,255,0.25)",
+                    margin: 0,
+                  }}
+                >
+                  {filtered.length} دواء متاح
+                </p>
               </div>
             </div>
-            <input
-              className="pos-search"
-              style={S.search}
-              placeholder="ابحث عن دواء..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            {/* Search */}
+            <div style={{ position: "relative", flexShrink: 0 }}>
+              <svg
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  opacity: 0.3,
+                }}
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="2"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+              <input
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 10,
+                  padding: "8px 14px 8px 34px",
+                  color: "#cbd5e1",
+                  fontSize: 12,
+                  fontFamily: "'Sora',sans-serif",
+                  outline: "none",
+                  width: 180,
+                }}
+                placeholder="ابحث عن دواء..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
           </div>
 
           {/* Categories */}
-          <div className="pos-cats-bar" style={S.catsBar}>
+          <div
+            className="cats-bar"
+            style={{
+              display: "flex",
+              gap: 6,
+              padding: "10px 18px",
+              borderBottom: "1px solid rgba(255,255,255,0.04)",
+              overflowX: "auto",
+              scrollbarWidth: "none",
+              flexShrink: 0,
+            }}
+          >
             {cats.map((c) => (
               <button
                 key={c}
-                className="cat-btn"
+                className="cat-pill"
                 onClick={() => setActiveCat(c)}
                 style={{
-                  ...S.catBtn,
-                  ...(activeCat === c ? S.catBtnActive : {}),
+                  padding: "5px 13px",
+                  borderRadius: 20,
+                  whiteSpace: "nowrap",
+                  fontFamily: "'Sora',sans-serif",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  border:
+                    activeCat === c
+                      ? "1px solid rgba(56,189,248,0.4)"
+                      : "1px solid rgba(255,255,255,0.07)",
+                  background:
+                    activeCat === c ? "rgba(56,189,248,0.1)" : "transparent",
+                  color: activeCat === c ? "#38bdf8" : "rgba(255,255,255,0.3)",
                 }}
               >
                 {c}
@@ -636,102 +847,348 @@ export default function POS() {
           </div>
 
           {/* Grid */}
-          <div className="pos-grid" style={S.grid}>
+          <div
+            className="pos-grid"
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: "14px 18px",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill,minmax(148px,1fr))",
+              gap: 10,
+              alignContent: "start",
+            }}
+          >
             {loading ? (
-              <p style={S.muted}>جارٍ التحميل...</p>
+              <p
+                style={{
+                  color: "rgba(255,255,255,0.15)",
+                  fontSize: 12,
+                  textAlign: "center",
+                  padding: "40px 0",
+                  gridColumn: "1/-1",
+                }}
+              >
+                جارٍ التحميل...
+              </p>
             ) : filtered.length === 0 ? (
-              <p style={S.muted}>لا توجد نتائج</p>
+              <p
+                style={{
+                  color: "rgba(255,255,255,0.15)",
+                  fontSize: 12,
+                  textAlign: "center",
+                  padding: "40px 0",
+                  gridColumn: "1/-1",
+                }}
+              >
+                لا توجد نتائج
+              </p>
             ) : (
               filtered.map((med, i) => (
                 <div
                   key={med._id}
                   className={`med-card${cart[med._id] ? " in-cart" : ""}`}
                   onClick={() => addToCart(med)}
-                  style={{ ...S.medCard, animationDelay: `${i * 0.03}s` }}
+                  style={{
+                    background: "rgba(10,16,30,0.8)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    borderRadius: 14,
+                    padding: 14,
+                    position: "relative",
+                    animationDelay: `${i * 0.025}s`,
+                  }}
                 >
-                  {med.isLowStock && <span style={S.lowBadge}>قليل</span>}
-                  <div style={S.medIcon}>
+                  {med.isLowStock && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: 8,
+                        right: 8,
+                        background: "rgba(251,191,36,0.12)",
+                        border: "1px solid rgba(251,191,36,0.25)",
+                        color: "#fbbf24",
+                        fontSize: 9,
+                        fontWeight: 700,
+                        padding: "2px 7px",
+                        borderRadius: 20,
+                      }}
+                    >
+                      قليل
+                    </span>
+                  )}
+                  {cart[med._id] && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: 8,
+                        left: 8,
+                        background: "rgba(52,211,153,0.15)",
+                        border: "1px solid rgba(52,211,153,0.3)",
+                        color: "#34d399",
+                        fontSize: 9,
+                        fontWeight: 700,
+                        padding: "2px 7px",
+                        borderRadius: 20,
+                      }}
+                    >
+                      ✓ {cart[med._id].qty}
+                    </span>
+                  )}
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 9,
+                      background: "rgba(56,189,248,0.08)",
+                      border: "1px solid rgba(56,189,248,0.12)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 10,
+                    }}
+                  >
                     <svg
-                      width="16"
-                      height="16"
+                      width="15"
+                      height="15"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke="#22d3ee"
+                      stroke="#38bdf8"
                       strokeWidth="1.5"
                       strokeLinecap="round"
                     >
-                      <path d="M10.5 20H4a2 2 0 01-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 011.66.9l.82 1.2a2 2 0 001.66.9H20a2 2 0 012 2v3" />
-                      <circle cx="18" cy="18" r="3" />
-                      <path d="M18 15v3l2 1" />
+                      <rect x="3" y="3" width="7" height="7" rx="1" />
+                      <rect x="14" y="3" width="7" height="7" rx="1" />
+                      <rect x="3" y="14" width="7" height="7" rx="1" />
+                      <rect x="14" y="14" width="7" height="7" rx="1" />
                     </svg>
                   </div>
-                  <p style={S.medName}>{med.name}</p>
-                  <p style={S.medCat}>{med.genericName || med.category}</p>
-                  <div style={S.medFooter}>
-                    <span style={S.medPrice}>{med.price} ج</span>
-                    <div className="add-pill" style={S.addPill}>
+                  <p
+                    style={{
+                      color: "#e2e8f0",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      margin: "0 0 2px",
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    {med.name}
+                  </p>
+                  <p
+                    style={{
+                      color: "rgba(255,255,255,0.22)",
+                      fontSize: 10,
+                      margin: "0 0 10px",
+                    }}
+                  >
+                    {med.genericName || med.category}
+                  </p>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: "#34d399",
+                        fontSize: 14,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {med.price}
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 400,
+                          marginRight: 2,
+                        }}
+                      >
+                        {" "}
+                        ج
+                      </span>
+                    </span>
+                    <div
+                      className="add-pill"
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 6,
+                        background: "rgba(56,189,248,0.1)",
+                        border: "1px solid rgba(56,189,248,0.2)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#38bdf8",
+                        fontSize: 15,
+                        opacity: 0,
+                        transition: "opacity 0.15s",
+                      }}
+                    >
                       +
                     </div>
                   </div>
-                  <div style={S.stockBar}>
+                  {/* Stock bar */}
+                  <div
+                    style={{
+                      height: 2,
+                      background: "rgba(255,255,255,0.05)",
+                      borderRadius: 2,
+                      overflow: "hidden",
+                      marginBottom: 3,
+                    }}
+                  >
                     <div
                       style={{
-                        ...S.stockFill,
+                        height: "100%",
+                        borderRadius: 2,
                         width: `${Math.min((med.stock / 50) * 100, 100)}%`,
+                        background:
+                          med.stock < 10
+                            ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
+                            : "linear-gradient(90deg,#38bdf8,#34d399)",
                       }}
                     />
                   </div>
-                  <p style={S.stockText}>{med.stock} وحدة</p>
+                  <p
+                    style={{
+                      fontSize: 9,
+                      color: "rgba(255,255,255,0.2)",
+                      margin: 0,
+                    }}
+                  >
+                    {med.stock} وحدة
+                  </p>
                 </div>
               ))
             )}
           </div>
         </div>
 
-        {/* ── Right Panel — Cart ── */}
+        {/* ══════════════ RIGHT PANEL — CART ══════════════ */}
         <div
-          className={`pos-right-panel${mobileTab === "products" ? " mobile-hidden" : ""}`}
-          style={S.rightPanel}
+          className={`right-panel${mobileTab === "products" ? " panel-hidden" : ""}`}
+          style={{
+            width: 272,
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            background: "rgba(5,9,18,0.85)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 16,
+            overflow: "hidden",
+            backdropFilter: "blur(16px)",
+          }}
         >
           {/* Cart Header */}
-          <div style={S.cartHead}>
+          <div
+            style={{
+              padding: "14px 16px 12px",
+              borderBottom: "1px solid rgba(255,255,255,0.05)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={S.cartTitle}>السلة</span>
+              <span style={{ color: "#f1f5f9", fontSize: 14, fontWeight: 700 }}>
+                السلة
+              </span>
               {cartItems.length > 0 && (
-                <span style={S.cartCount}>{cartItems.length}</span>
+                <span
+                  style={{
+                    background: "rgba(52,211,153,0.12)",
+                    border: "1px solid rgba(52,211,153,0.25)",
+                    color: "#34d399",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: "2px 8px",
+                    borderRadius: 20,
+                    animation: "pop 0.3s ease",
+                  }}
+                >
+                  {cartItems.length}
+                </span>
               )}
             </div>
             {cartItems.length > 0 && (
-              <button onClick={clearCart} style={S.clearBtn}>
-                مسح
+              <button
+                onClick={clearCart}
+                style={{
+                  color: "rgba(239,68,68,0.5)",
+                  fontSize: 11,
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: "'Sora',sans-serif",
+                  fontWeight: 600,
+                }}
+              >
+                مسح الكل
               </button>
             )}
           </div>
 
           {/* Cart Items */}
-          <div className="pos-cart-body" style={S.cartBody}>
+          <div
+            className="cart-body"
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: "10px 14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 7,
+            }}
+          >
             {cartItems.length === 0 ? (
-              <div style={S.emptyCart}>
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  padding: "40px 0",
+                  opacity: 0.35,
+                }}
+              >
                 <svg
-                  width="32"
-                  height="32"
+                  width="36"
+                  height="36"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="rgba(255,255,255,0.1)"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
+                  stroke="rgba(255,255,255,0.3)"
+                  strokeWidth="1"
                 >
                   <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
                   <line x1="3" y1="6" x2="21" y2="6" />
                   <path d="M16 10a4 4 0 01-8 0" />
                 </svg>
-                <p style={{ color: "rgba(255,255,255,0.15)", fontSize: 12 }}>
+                <p
+                  style={{
+                    color: "rgba(255,255,255,0.2)",
+                    fontSize: 11,
+                    fontFamily: "'Sora',sans-serif",
+                  }}
+                >
                   السلة فارغة
                 </p>
               </div>
             ) : (
               cartItems.map((item) => (
-                <div key={item._id} style={S.cartItem}>
+                <div
+                  key={item._id}
+                  className="cart-item"
+                  style={{
+                    background: "rgba(255,255,255,0.025)",
+                    border: "1px solid rgba(255,255,255,0.05)",
+                    borderRadius: 11,
+                    padding: "10px 12px",
+                  }}
+                >
                   <div
                     style={{
                       display: "flex",
@@ -740,10 +1197,33 @@ export default function POS() {
                       marginBottom: 8,
                     }}
                   >
-                    <p style={S.ciName}>{item.name}</p>
+                    <p
+                      style={{
+                        color: "#e2e8f0",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        margin: 0,
+                        lineHeight: 1.3,
+                        flex: 1,
+                        marginLeft: 8,
+                      }}
+                    >
+                      {item.name}
+                    </p>
                     <button
+                      className="rm-btn"
                       onClick={() => removeItem(item._id)}
-                      style={S.rmBtn}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "rgba(239,68,68,0.35)",
+                        fontSize: 16,
+                        cursor: "pointer",
+                        lineHeight: 1,
+                        padding: 0,
+                        flexShrink: 0,
+                        transition: "color 0.15s",
+                      }}
                     >
                       ×
                     </button>
@@ -755,20 +1235,68 @@ export default function POS() {
                       justifyContent: "space-between",
                     }}
                   >
-                    <span style={S.ciPrice}>{item.price * item.qty} ج</span>
-                    <div style={S.qtyCtrl}>
+                    <span
+                      style={{
+                        color: "#34d399",
+                        fontSize: 13,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {(item.price * item.qty).toFixed(2)} ج
+                    </span>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 6 }}
+                    >
                       <button
                         className="qty-btn"
                         onClick={() => setQty(item._id, -1)}
-                        style={S.qtyBtn}
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: 6,
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          background: "rgba(255,255,255,0.04)",
+                          color: "#94a3b8",
+                          fontSize: 14,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontFamily: "'Sora',sans-serif",
+                          transition: "background 0.15s",
+                        }}
                       >
                         −
                       </button>
-                      <span style={S.qtyNum}>{item.qty}</span>
+                      <span
+                        style={{
+                          color: "#f1f5f9",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          minWidth: 20,
+                          textAlign: "center",
+                        }}
+                      >
+                        {item.qty}
+                      </span>
                       <button
                         className="qty-btn"
                         onClick={() => setQty(item._id, 1)}
-                        style={S.qtyBtn}
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: 6,
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          background: "rgba(255,255,255,0.04)",
+                          color: "#94a3b8",
+                          fontSize: 14,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontFamily: "'Sora',sans-serif",
+                          transition: "background 0.15s",
+                        }}
                       >
                         +
                       </button>
@@ -780,87 +1308,141 @@ export default function POS() {
           </div>
 
           {/* Cart Footer */}
-          <div className="pos-cart-foot" style={S.cartFoot}>
+          <div
+            className="cart-foot"
+            style={{
+              padding: "14px 16px",
+              borderTop: "1px solid rgba(255,255,255,0.05)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            {/* Patient */}
             <input
-              style={S.patientInput}
+              style={{
+                width: "100%",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 10,
+                padding: "9px 12px",
+                color: "#cbd5e1",
+                fontSize: 12,
+                fontFamily: "'Sora',sans-serif",
+                outline: "none",
+              }}
               placeholder="اسم المريض (اختياري)"
               value={patientName}
               onChange={(e) => setPatientName(e.target.value)}
             />
 
-            <div style={{ display: "flex", gap: 6 }}>
-              {[
-                ["cash", "نقدي"],
-                ["card", "بطاقة"],
-                ["insurance", "تأمين"],
-              ].map(([v, l]) => (
+            {/* Payment Methods */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: 6,
+              }}
+            >
+              {["cash", "card", "insurance"].map((v) => (
                 <button
                   key={v}
-                  className="pay-opt"
+                  className="pay-btn"
                   onClick={() => {
                     setPaymentMethod(v);
                     if (v === "insurance") setShowInsuranceModal(true);
                   }}
                   style={{
-                    ...S.payOpt,
-                    ...(paymentMethod === v ? S.payOptActive : {}),
+                    padding: "8px 4px",
+                    borderRadius: 9,
+                    fontFamily: "'Sora',sans-serif",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    textAlign: "center",
+                    transition: "all 0.2s",
+                    border:
+                      paymentMethod === v
+                        ? "1px solid rgba(56,189,248,0.4)"
+                        : "1px solid rgba(255,255,255,0.06)",
+                    background:
+                      paymentMethod === v
+                        ? "rgba(56,189,248,0.1)"
+                        : "rgba(255,255,255,0.02)",
+                    color:
+                      paymentMethod === v ? "#38bdf8" : "rgba(255,255,255,0.3)",
                   }}
                 >
-                  {l}
+                  <div style={{ fontSize: 14, marginBottom: 2 }}>
+                    {payIcons[v]}
+                  </div>
+                  {payLabels[v]}
                 </button>
               ))}
             </div>
 
+            {/* Insurance strip */}
             {paymentMethod === "insurance" && insuranceCompany && (
               <div
-                style={S.insStrip}
                 onClick={() => setShowInsuranceModal(true)}
+                style={{
+                  background: "rgba(56,189,248,0.05)",
+                  border: "1px solid rgba(56,189,248,0.15)",
+                  borderRadius: 9,
+                  padding: "8px 12px",
+                  cursor: "pointer",
+                }}
               >
                 <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
+                  style={{ display: "flex", justifyContent: "space-between" }}
                 >
                   <span
-                    style={{ color: "#22d3ee", fontSize: 11, fontWeight: 600 }}
+                    style={{ color: "#38bdf8", fontSize: 11, fontWeight: 600 }}
                   >
                     🛡️ {insuranceCompany.name}
                   </span>
-                  <span style={{ color: "#f59e0b", fontSize: 11 }}>
-                    خصم {insuranceCompany.discount * 100}%
+                  <span
+                    style={{ color: "#f59e0b", fontSize: 11, fontWeight: 600 }}
+                  >
+                    - {insuranceCompany.discount * 100}%
                   </span>
                 </div>
                 {insuranceCardNumber && (
                   <span
-                    style={{ color: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                    style={{ color: "rgba(255,255,255,0.25)", fontSize: 10 }}
                   >
                     بطاقة: {insuranceCardNumber}
                   </span>
                 )}
               </div>
             )}
-
             {paymentMethod === "insurance" && !insuranceCompany && (
               <button
                 onClick={() => setShowInsuranceModal(true)}
-                style={S.insEmptyBtn}
+                style={{
+                  background: "rgba(251,191,36,0.05)",
+                  border: "1px solid rgba(251,191,36,0.2)",
+                  borderRadius: 9,
+                  padding: "8px 12px",
+                  color: "#fbbf24",
+                  fontSize: 11,
+                  fontFamily: "'Sora',sans-serif",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  fontWeight: 600,
+                }}
               >
                 ⚠ أدخل بيانات التأمين
               </button>
             )}
 
-            <div style={S.divider} />
+            <div style={{ height: 1, background: "rgba(255,255,255,0.05)" }} />
 
+            {/* Totals */}
             {activeInsurance && (
               <>
                 <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "baseline",
-                  }}
+                  style={{ display: "flex", justifyContent: "space-between" }}
                 >
                   <span
                     style={{ color: "rgba(255,255,255,0.25)", fontSize: 11 }}
@@ -869,8 +1451,8 @@ export default function POS() {
                   </span>
                   <span
                     style={{
-                      color: "rgba(255,255,255,0.35)",
-                      fontSize: 14,
+                      color: "rgba(255,255,255,0.3)",
+                      fontSize: 13,
                       textDecoration: "line-through",
                     }}
                   >
@@ -878,24 +1460,19 @@ export default function POS() {
                   </span>
                 </div>
                 <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "baseline",
-                  }}
+                  style={{ display: "flex", justifyContent: "space-between" }}
                 >
-                  <span style={{ color: "rgba(245,158,11,0.8)", fontSize: 11 }}>
-                    خصم التأمين {activeInsurance.discount * 100}%
+                  <span style={{ color: "rgba(245,158,11,0.7)", fontSize: 11 }}>
+                    خصم {activeInsurance.discount * 100}%
                   </span>
                   <span
-                    style={{ color: "#f59e0b", fontSize: 13, fontWeight: 600 }}
+                    style={{ color: "#f59e0b", fontSize: 12, fontWeight: 600 }}
                   >
                     - {discountAmount.toFixed(2)} ج
                   </span>
                 </div>
               </>
             )}
-
             <div
               style={{
                 display: "flex",
@@ -904,24 +1481,52 @@ export default function POS() {
               }}
             >
               <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 12 }}>
-                {activeInsurance ? "المبلغ المتبقي" : "الإجمالي"}
+                {activeInsurance ? "المبلغ المستحق" : "الإجمالي"}
               </span>
               <span
-                className="pos-total-val"
                 style={{
-                  ...S.totalVal,
-                  color: activeInsurance ? "#22d3ee" : "#f1f5f9",
+                  color: activeInsurance ? "#38bdf8" : "#f1f5f9",
+                  fontSize: "clamp(18px,4vw,24px)",
+                  fontWeight: 800,
+                  letterSpacing: "-0.02em",
                 }}
               >
-                {finalTotal.toFixed(2)} ج
+                {finalTotal.toFixed(2)}
+                <span style={{ fontSize: 12, fontWeight: 400, marginRight: 3 }}>
+                  ج
+                </span>
               </span>
             </div>
 
-            {error && <div style={S.errorBox}>⚠ {error}</div>}
+            {error && (
+              <div
+                style={{
+                  background: "rgba(239,68,68,0.07)",
+                  border: "1px solid rgba(239,68,68,0.15)",
+                  borderRadius: 9,
+                  padding: "8px 12px",
+                  color: "#f87171",
+                  fontSize: 11,
+                  textAlign: "center",
+                }}
+              >
+                ⚠ {error}
+              </div>
+            )}
             {success && (
-              <div style={S.successBox}>
-                ✓ تمت البيعة · {success.count} صنف · {success.total.toFixed(2)}{" "}
-                ج
+              <div
+                style={{
+                  background: "rgba(52,211,153,0.07)",
+                  border: "1px solid rgba(52,211,153,0.15)",
+                  borderRadius: 9,
+                  padding: "8px 12px",
+                  color: "#34d399",
+                  fontSize: 11,
+                  textAlign: "center",
+                  animation: "pop 0.3s ease",
+                }}
+              >
+                ✓ {success.count} صنف · {success.total.toFixed(2)} ج
               </div>
             )}
 
@@ -930,26 +1535,75 @@ export default function POS() {
               onClick={handleSale}
               disabled={submitting || cartItems.length === 0}
               style={{
-                ...S.sellBtn,
-                opacity: submitting || cartItems.length === 0 ? 0.35 : 1,
+                height: 46,
+                borderRadius: 11,
+                border: "1px solid rgba(52,211,153,0.35)",
+                background:
+                  cartItems.length === 0
+                    ? "rgba(52,211,153,0.04)"
+                    : "rgba(52,211,153,0.12)",
+                color:
+                  cartItems.length === 0 ? "rgba(52,211,153,0.3)" : "#34d399",
+                fontSize: 13,
+                fontFamily: "'Sora',sans-serif",
+                fontWeight: 700,
+                cursor: cartItems.length === 0 ? "not-allowed" : "pointer",
+                letterSpacing: "0.03em",
               }}
             >
-              {submitting ? "جارٍ الحفظ..." : "✔  إتمام البيع"}
+              {submitting
+                ? "جارٍ الحفظ..."
+                : cartItems.length === 0
+                  ? "السلة فارغة"
+                  : `✔ إتمام البيع · ${finalTotal.toFixed(2)} ج`}
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── Floating Cart FAB (mobile only, shown on products tab) ── */}
+      {/* ── Mobile FAB ── */}
       {mobileTab === "products" && cartItems.length > 0 && (
         <button
-          className="mobile-cart-fab"
+          className="mobile-fab"
           onClick={() => setMobileTab("cart")}
-          style={S.cartFab}
+          style={{
+            display: "none",
+            position: "fixed",
+            bottom: 20,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 100,
+            background: "rgba(6,10,20,0.95)",
+            border: "1px solid rgba(52,211,153,0.35)",
+            borderRadius: 40,
+            padding: "11px 22px",
+            color: "#cbd5e1",
+            fontSize: 12,
+            fontFamily: "'Sora',sans-serif",
+            fontWeight: 700,
+            cursor: "pointer",
+            alignItems: "center",
+            gap: 10,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+            backdropFilter: "blur(12px)",
+            whiteSpace: "nowrap",
+          }}
         >
-          <span>🛒 السلة</span>
-          <span style={S.cartFabBadge}>{cartItems.length}</span>
-          <span style={{ color: "#22d3ee", fontWeight: 700, fontSize: 13 }}>
+          <span>🛒</span>
+          <span
+            style={{
+              background: "rgba(52,211,153,0.15)",
+              border: "1px solid rgba(52,211,153,0.3)",
+              color: "#34d399",
+              fontSize: 10,
+              fontWeight: 800,
+              padding: "2px 8px",
+              borderRadius: 20,
+            }}
+          >
+            {cartItems.length} صنف
+          </span>
+          <span style={{ color: "#34d399", fontWeight: 800 }}>
             {finalTotal.toFixed(0)} ج
           </span>
         </button>
@@ -957,524 +1611,3 @@ export default function POS() {
     </div>
   );
 }
-
-const S = {
-  page: {
-    fontFamily: "'Sora', sans-serif",
-    color: "#e2e8f0",
-    height: "calc(100vh - 100px)",
-    display: "flex",
-    flexDirection: "column",
-    position: "relative",
-  },
-  layout: {
-    display: "flex",
-    gap: 16,
-    flex: 1,
-    overflow: "hidden",
-  },
-  // ── Mobile Tab Switcher ──
-  mobileTabs: {
-    display: "none", // shown via media query
-    position: "sticky",
-    top: 0,
-    zIndex: 50,
-    background: "rgba(8,12,20,0.95)",
-    backdropFilter: "blur(10px)",
-    borderBottom: "1px solid rgba(255,255,255,0.06)",
-    padding: "8px 14px",
-    gap: 8,
-    flexShrink: 0,
-  },
-  mobileTab: {
-    flex: 1,
-    padding: "9px 12px",
-    borderRadius: 10,
-    border: "1px solid rgba(255,255,255,0.07)",
-    background: "transparent",
-    color: "rgba(255,255,255,0.3)",
-    fontSize: 12,
-    fontFamily: "'Sora', sans-serif",
-    fontWeight: 600,
-    cursor: "pointer",
-    position: "relative",
-  },
-  mobileTabActive: {
-    border: "1px solid rgba(34,211,238,0.3)",
-    background: "rgba(34,211,238,0.08)",
-    color: "#22d3ee",
-  },
-  mobileTabBadge: {
-    position: "absolute",
-    top: -6,
-    right: -6,
-    background: "#22d3ee",
-    color: "#0a0f1a",
-    fontSize: 10,
-    fontWeight: 800,
-    width: 18,
-    height: 18,
-    borderRadius: "50%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  // ── Floating Cart Button (mobile) ──
-  cartFab: {
-    display: "none", // shown via media query
-    position: "fixed",
-    bottom: 20,
-    left: "50%",
-    transform: "translateX(-50%)",
-    zIndex: 100,
-    background: "rgba(13,21,38,0.95)",
-    border: "1px solid rgba(34,211,238,0.3)",
-    borderRadius: 40,
-    padding: "12px 24px",
-    color: "#cbd5e1",
-    fontSize: 13,
-    fontFamily: "'Sora', sans-serif",
-    fontWeight: 600,
-    cursor: "pointer",
-    alignItems: "center",
-    gap: 10,
-    boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(34,211,238,0.1)",
-    backdropFilter: "blur(12px)",
-    whiteSpace: "nowrap",
-  },
-  cartFabBadge: {
-    background: "#22d3ee",
-    color: "#0a0f1a",
-    fontSize: 11,
-    fontWeight: 800,
-    padding: "2px 7px",
-    borderRadius: 20,
-  },
-  // ── Panels ──
-  leftPanel: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    background: "rgba(8,12,20,0.6)",
-    border: "1px solid rgba(255,255,255,0.06)",
-    borderRadius: 16,
-    overflow: "hidden",
-    minWidth: 0,
-  },
-  panelHead: {
-    padding: "16px 20px 12px",
-    borderBottom: "1px solid rgba(255,255,255,0.05)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    flexWrap: "wrap",
-  },
-  headIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    background: "rgba(34,211,238,0.08)",
-    border: "1px solid rgba(34,211,238,0.15)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  panelTitle: { fontSize: 15, fontWeight: 600, color: "#f1f5f9", margin: 0 },
-  panelSub: { fontSize: 11, color: "rgba(255,255,255,0.25)", margin: 0 },
-  search: {
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.07)",
-    borderRadius: 10,
-    padding: "8px 14px",
-    color: "#cbd5e1",
-    fontSize: 12,
-    fontFamily: "'Sora', sans-serif",
-    outline: "none",
-    width: 200,
-  },
-  catsBar: {
-    display: "flex",
-    gap: 6,
-    padding: "10px 20px",
-    borderBottom: "1px solid rgba(255,255,255,0.05)",
-    overflowX: "auto",
-    scrollbarWidth: "none",
-  },
-  catBtn: {
-    padding: "5px 12px",
-    borderRadius: 20,
-    border: "1px solid rgba(255,255,255,0.07)",
-    background: "transparent",
-    color: "rgba(255,255,255,0.3)",
-    fontSize: 11,
-    fontFamily: "'Sora', sans-serif",
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  },
-  catBtnActive: {
-    border: "1px solid rgba(34,211,238,0.3)",
-    background: "rgba(34,211,238,0.08)",
-    color: "#22d3ee",
-    fontWeight: 600,
-  },
-  grid: {
-    flex: 1,
-    overflowY: "auto",
-    padding: "16px 20px",
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
-    gap: 10,
-    alignContent: "start",
-  },
-  medCard: {
-    background: "rgba(15,23,42,0.7)",
-    border: "1px solid rgba(255,255,255,0.06)",
-    borderRadius: 12,
-    padding: 14,
-    cursor: "pointer",
-    position: "relative",
-    animation: "fadeUp 0.3s ease both",
-  },
-  lowBadge: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    background: "rgba(245,158,11,0.12)",
-    border: "1px solid rgba(245,158,11,0.2)",
-    color: "#f59e0b",
-    fontSize: 9,
-    fontWeight: 600,
-    padding: "2px 6px",
-    borderRadius: 20,
-  },
-  medIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    background: "rgba(34,211,238,0.07)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
-  medName: {
-    color: "#cbd5e1",
-    fontSize: 12,
-    fontWeight: 600,
-    margin: "0 0 2px",
-    lineHeight: 1.3,
-  },
-  medCat: { color: "rgba(255,255,255,0.2)", fontSize: 10, margin: "0 0 10px" },
-  medFooter: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  medPrice: { color: "#22d3ee", fontSize: 14, fontWeight: 700 },
-  addPill: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    background: "rgba(34,211,238,0.12)",
-    border: "1px solid rgba(34,211,238,0.2)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#22d3ee",
-    fontSize: 16,
-    opacity: 0,
-    transition: "opacity 0.15s",
-  },
-  stockBar: {
-    height: 2,
-    background: "rgba(255,255,255,0.06)",
-    borderRadius: 2,
-    overflow: "hidden",
-    marginBottom: 4,
-  },
-  stockFill: {
-    height: "100%",
-    background: "rgba(34,211,238,0.4)",
-    borderRadius: 2,
-  },
-  stockText: { fontSize: 9, color: "rgba(255,255,255,0.2)", margin: 0 },
-  muted: {
-    color: "rgba(255,255,255,0.15)",
-    fontSize: 12,
-    textAlign: "center",
-    padding: "40px 0",
-    gridColumn: "1/-1",
-  },
-  rightPanel: {
-    width: 280,
-    flexShrink: 0,
-    display: "flex",
-    flexDirection: "column",
-    background: "rgba(8,12,20,0.8)",
-    border: "1px solid rgba(255,255,255,0.06)",
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  cartHead: {
-    padding: "16px 18px 12px",
-    borderBottom: "1px solid rgba(255,255,255,0.05)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  cartTitle: { color: "#f1f5f9", fontSize: 14, fontWeight: 600 },
-  cartCount: {
-    background: "rgba(34,211,238,0.1)",
-    border: "1px solid rgba(34,211,238,0.2)",
-    color: "#22d3ee",
-    fontSize: 10,
-    fontWeight: 700,
-    padding: "2px 7px",
-    borderRadius: 20,
-  },
-  clearBtn: {
-    color: "rgba(239,68,68,0.5)",
-    fontSize: 11,
-    background: "transparent",
-    border: "none",
-    cursor: "pointer",
-    fontFamily: "'Sora', sans-serif",
-  },
-  cartBody: {
-    flex: 1,
-    overflowY: "auto",
-    padding: "12px 18px",
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
-  emptyCart: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    padding: "40px 0",
-  },
-  cartItem: {
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(255,255,255,0.05)",
-    borderRadius: 10,
-    padding: "10px 12px",
-  },
-  ciName: { color: "#cbd5e1", fontSize: 12, fontWeight: 600, margin: 0 },
-  ciPrice: { color: "#10b981", fontSize: 12, fontWeight: 600 },
-  rmBtn: {
-    background: "transparent",
-    border: "none",
-    color: "rgba(239,68,68,0.4)",
-    fontSize: 16,
-    cursor: "pointer",
-    lineHeight: 1,
-    padding: 0,
-  },
-  qtyCtrl: { display: "flex", alignItems: "center", gap: 6 },
-  qtyBtn: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    border: "1px solid rgba(255,255,255,0.08)",
-    background: "rgba(255,255,255,0.04)",
-    color: "#94a3b8",
-    fontSize: 14,
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontFamily: "'Sora', sans-serif",
-  },
-  qtyNum: {
-    color: "#e2e8f0",
-    fontSize: 13,
-    fontWeight: 600,
-    minWidth: 20,
-    textAlign: "center",
-  },
-  cartFoot: {
-    padding: "14px 18px",
-    borderTop: "1px solid rgba(255,255,255,0.05)",
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-  },
-  patientInput: {
-    width: "100%",
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.07)",
-    borderRadius: 10,
-    padding: "8px 12px",
-    color: "#cbd5e1",
-    fontSize: 12,
-    fontFamily: "'Sora', sans-serif",
-    outline: "none",
-    boxSizing: "border-box",
-  },
-  payOpt: {
-    flex: 1,
-    padding: "7px 4px",
-    borderRadius: 8,
-    border: "1px solid rgba(255,255,255,0.07)",
-    background: "transparent",
-    color: "rgba(255,255,255,0.25)",
-    fontSize: 11,
-    fontFamily: "'Sora', sans-serif",
-    cursor: "pointer",
-  },
-  payOptActive: {
-    border: "1px solid rgba(34,211,238,0.3)",
-    background: "rgba(34,211,238,0.08)",
-    color: "#22d3ee",
-    fontWeight: 600,
-  },
-  divider: { height: 1, background: "rgba(255,255,255,0.05)" },
-  totalVal: { color: "#f1f5f9", fontSize: 22, fontWeight: 700 },
-  errorBox: {
-    background: "rgba(239,68,68,0.08)",
-    border: "1px solid rgba(239,68,68,0.15)",
-    borderRadius: 8,
-    padding: "8px 12px",
-    color: "#f87171",
-    fontSize: 11,
-    textAlign: "center",
-  },
-  successBox: {
-    background: "rgba(16,185,129,0.08)",
-    border: "1px solid rgba(16,185,129,0.15)",
-    borderRadius: 8,
-    padding: "8px 12px",
-    color: "#34d399",
-    fontSize: 11,
-    textAlign: "center",
-  },
-  sellBtn: {
-    width: "100%",
-    padding: "12px",
-    borderRadius: 10,
-    border: "1px solid rgba(34,211,238,0.25)",
-    background: "rgba(34,211,238,0.1)",
-    color: "#22d3ee",
-    fontSize: 13,
-    fontFamily: "'Sora', sans-serif",
-    fontWeight: 700,
-    cursor: "pointer",
-    transition: "all 0.2s",
-    letterSpacing: "0.03em",
-  },
-  // Insurance
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.7)",
-    backdropFilter: "blur(4px)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1000,
-  },
-  modal: {
-    background: "#0d1526",
-    border: "1px solid rgba(34,211,238,0.15)",
-    borderRadius: 18,
-    width: 360,
-    maxWidth: "90vw",
-    boxShadow: "0 24px 60px rgba(0,0,0,0.6)",
-    overflow: "hidden",
-  },
-  modalHead: {
-    padding: "16px 20px",
-    borderBottom: "1px solid rgba(255,255,255,0.06)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  modalTitle: {
-    color: "#f1f5f9",
-    fontSize: 15,
-    fontWeight: 700,
-    fontFamily: "'Sora', sans-serif",
-  },
-  modalClose: {
-    background: "transparent",
-    border: "none",
-    color: "rgba(255,255,255,0.3)",
-    fontSize: 22,
-    cursor: "pointer",
-    lineHeight: 1,
-    padding: 0,
-    fontFamily: "'Sora', sans-serif",
-  },
-  modalBody: {
-    padding: "18px 20px 20px",
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-    fontFamily: "'Sora', sans-serif",
-  },
-  fieldLabel: {
-    color: "rgba(255,255,255,0.4)",
-    fontSize: 11,
-    fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: "0.06em",
-    margin: "0 0 6px",
-  },
-  insOption: {
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(255,255,255,0.07)",
-    borderRadius: 10,
-    padding: "10px 14px",
-    color: "#cbd5e1",
-    fontSize: 13,
-    fontFamily: "'Sora', sans-serif",
-    cursor: "pointer",
-    textAlign: "right",
-    transition: "all 0.15s",
-  },
-  insOptionActive: {
-    border: "1px solid rgba(34,211,238,0.35)",
-    background: "rgba(34,211,238,0.07)",
-    color: "#f1f5f9",
-  },
-  insPreview: {
-    background: "rgba(34,211,238,0.04)",
-    border: "1px solid rgba(34,211,238,0.12)",
-    borderRadius: 10,
-    padding: "12px 14px",
-    marginBottom: 8,
-  },
-  insDivider: {
-    height: 1,
-    background: "rgba(255,255,255,0.06)",
-    margin: "8px 0",
-  },
-  insStrip: {
-    background: "rgba(34,211,238,0.05)",
-    border: "1px solid rgba(34,211,238,0.15)",
-    borderRadius: 8,
-    padding: "8px 12px",
-    cursor: "pointer",
-    display: "flex",
-    flexDirection: "column",
-    gap: 2,
-  },
-  insEmptyBtn: {
-    background: "rgba(245,158,11,0.06)",
-    border: "1px solid rgba(245,158,11,0.2)",
-    borderRadius: 8,
-    padding: "8px 12px",
-    color: "#f59e0b",
-    fontSize: 11,
-    fontFamily: "'Sora', sans-serif",
-    cursor: "pointer",
-    width: "100%",
-    textAlign: "center",
-  },
-};
