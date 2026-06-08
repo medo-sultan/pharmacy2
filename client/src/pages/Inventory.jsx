@@ -2,7 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/Sultan";
-import { Plus, Search, Package2, AlertTriangle, X, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Package2,
+  AlertTriangle,
+  X,
+  Trash2,
+  Pencil,
+} from "lucide-react";
 
 export default function Inventory() {
   const { apiFetch, isAdmin } = useAuth();
@@ -32,6 +40,9 @@ export default function Inventory() {
   const [restockQty, setRestockQty] = useState("");
   const [restockExpiry, setRestockExpiry] = useState("");
   const [deleteId, setDeleteId] = useState(null); // { id, name }
+  const [editMed, setEditMed] = useState(null); // الدواء اللي بنعدله
+  const [editForm, setEditForm] = useState({});
+  const [editing, setEditing] = useState(false);
 
   const load = async () => {
     try {
@@ -110,6 +121,47 @@ export default function Inventory() {
       load();
     } catch (e) {
       alert(e.message);
+    }
+  };
+
+  const openEdit = (med) => {
+    setEditMed(med);
+    setEditForm({
+      name: med.name || "",
+      genericName: med.genericName || "",
+      category: med.category || "general",
+      manufacturer: med.manufacturer || "",
+      price: med.price ?? "",
+      stock: med.stock ?? "",
+      lowStockThreshold: med.lowStockThreshold ?? 10,
+      expiryDate: med.expiryDate ? med.expiryDate.slice(0, 10) : "",
+      description: med.description || "",
+      requiresPrescription: med.requiresPrescription || false,
+      barcode: med.barcode || "",
+    });
+  };
+
+  const doEdit = async () => {
+    try {
+      setEditing(true);
+      await apiFetch(`/pharmacy/medicine/edit/${editMed._id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          ...editForm,
+          price: Number(editForm.price),
+          stock: Number(editForm.stock || 0),
+          lowStockThreshold: Number(editForm.lowStockThreshold || 10),
+          requiresPrescription:
+            editForm.requiresPrescription === true ||
+            editForm.requiresPrescription === "true",
+        }),
+      });
+      setEditMed(null);
+      load();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setEditing(false);
     }
   };
 
@@ -444,6 +496,25 @@ export default function Inventory() {
                 </div>
 
                 <div style={{ display: "flex", gap: 8 }}>
+                  {isAdmin && (
+                    <button
+                      onClick={() => openEdit(med)}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        border: "1px solid rgba(167,139,250,0.2)",
+                        background: "rgba(167,139,250,0.06)",
+                        color: "#a78bfa",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Pencil size={14} />
+                    </button>
+                  )}
                   <button
                     onClick={() => setRestockId(med._id)}
                     style={{
@@ -722,6 +793,247 @@ export default function Inventory() {
               }}
             >
               {adding ? "جارٍ الإضافة..." : "إضافة الدواء"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Medicine Modal */}
+      {editMed && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            backdropFilter: "blur(6px)",
+            zIndex: 50,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 560,
+              background: "#0d1117",
+              border: "1px solid rgba(167,139,250,0.15)",
+              borderRadius: "20px 20px 0 0",
+              padding:
+                "20px 20px calc(20px + env(safe-area-inset-bottom, 0px))",
+              maxHeight: "90vh",
+              overflowY: "auto",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 16,
+              }}
+            >
+              <h2
+                style={{
+                  color: "#f1f5f9",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  margin: 0,
+                }}
+              >
+                تعديل: {editMed.name}
+              </h2>
+              <button
+                onClick={() => setEditMed(null)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#475569",
+                  cursor: "pointer",
+                  padding: 4,
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 10,
+              }}
+            >
+              {[
+                ["name", "اسم الدواء *", "text"],
+                ["genericName", "الاسم العلمي", "text"],
+                ["manufacturer", "الشركة المصنعة", "text"],
+                ["price", "السعر", "number"],
+                ["stock", "المخزون", "number"],
+                ["lowStockThreshold", "حد التنبيه", "number"],
+                ["expiryDate", "تاريخ الصلاحية", "date"],
+                ["barcode", "باركود الدواء", "text"],
+              ].map(([k, l, t]) => (
+                <div
+                  key={k}
+                  style={{
+                    gridColumn:
+                      k === "name" || k === "barcode" ? "1 / -1" : "auto",
+                  }}
+                >
+                  <label
+                    style={{
+                      color: "#475569",
+                      fontSize: 11,
+                      display: "block",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {l}
+                  </label>
+                  <input
+                    type={t}
+                    className="inv-modal-input"
+                    value={editForm[k] ?? ""}
+                    dir={k === "barcode" ? "ltr" : "rtl"}
+                    placeholder={
+                      k === "barcode" ? "امسح الباركود أو اكتبه يدوياً..." : ""
+                    }
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, [k]: e.target.value }))
+                    }
+                    style={{
+                      width: "100%",
+                      height: 44,
+                      borderRadius: 12,
+                      background: "rgba(15,23,42,0.8)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      padding: "0 12px",
+                      color: "#cbd5e1",
+                      fontSize: 13,
+                      fontFamily: "'Sora', sans-serif",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+              ))}
+
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label
+                  style={{
+                    color: "#475569",
+                    fontSize: 11,
+                    display: "block",
+                    marginBottom: 4,
+                  }}
+                >
+                  التصنيف
+                </label>
+                <select
+                  className="inv-modal-input"
+                  value={editForm.category}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, category: e.target.value }))
+                  }
+                  style={{
+                    width: "100%",
+                    height: 44,
+                    borderRadius: 12,
+                    background: "rgba(15,23,42,0.8)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    padding: "0 12px",
+                    color: "#cbd5e1",
+                    fontSize: 13,
+                    fontFamily: "'Sora', sans-serif",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <option value="general">عام</option>
+                  <option value="antibiotic">مضاد حيوي</option>
+                  <option value="vitamin">فيتامين</option>
+                  <option value="painkiller">مسكن</option>
+                  <option value="chronic">أمراض مزمنة</option>
+                  <option value="dermatology">جلدية</option>
+                  <option value="cardiology">قلبية</option>
+                  <option value="pediatric">أطفال</option>
+                  <option value="other">أخرى</option>
+                </select>
+              </div>
+
+              <div style={{ gridColumn: "1 / -1" }}>
+                <textarea
+                  className="inv-modal-input"
+                  rows={3}
+                  placeholder="الوصف"
+                  value={editForm.description}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, description: e.target.value }))
+                  }
+                  style={{
+                    width: "100%",
+                    borderRadius: 12,
+                    background: "rgba(15,23,42,0.8)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    padding: "10px 12px",
+                    color: "#cbd5e1",
+                    fontSize: 13,
+                    fontFamily: "'Sora', sans-serif",
+                    boxSizing: "border-box",
+                    resize: "vertical",
+                  }}
+                />
+              </div>
+
+              <div
+                style={{
+                  gridColumn: "1 / -1",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  id="edit-rx-check"
+                  checked={editForm.requiresPrescription}
+                  onChange={(e) =>
+                    setEditForm((f) => ({
+                      ...f,
+                      requiresPrescription: e.target.checked,
+                    }))
+                  }
+                  style={{ width: 18, height: 18, cursor: "pointer" }}
+                />
+                <label
+                  htmlFor="edit-rx-check"
+                  style={{ color: "#94a3b8", fontSize: 13, cursor: "pointer" }}
+                >
+                  يحتاج وصفة طبية
+                </label>
+              </div>
+            </div>
+
+            <button
+              onClick={doEdit}
+              disabled={editing || !editForm.name}
+              style={{
+                width: "100%",
+                height: 48,
+                borderRadius: 14,
+                marginTop: 16,
+                background:
+                  editing || !editForm.name
+                    ? "rgba(167,139,250,0.3)"
+                    : "rgba(167,139,250,0.9)",
+                color: "#fff",
+                fontWeight: 700,
+                border: "none",
+                fontSize: 14,
+                fontFamily: "'Sora', sans-serif",
+                cursor: editing || !editForm.name ? "not-allowed" : "pointer",
+              }}
+            >
+              {editing ? "جارٍ الحفظ..." : "حفظ التعديلات"}
             </button>
           </div>
         </div>

@@ -154,6 +154,7 @@ pharmacyRouter.post("/medicine/add-json", adminAuth, async (req, res) => {
       expiryDate,
       manufacturer,
       description,
+      barcode,
     } = req.body;
 
     if (!name || !price || !expiryDate) {
@@ -174,6 +175,7 @@ pharmacyRouter.post("/medicine/add-json", adminAuth, async (req, res) => {
       expiryDate: new Date(expiryDate),
       manufacturer: manufacturer || "",
       description: description || "",
+      barcode: barcode || "",
       image: "",
     });
 
