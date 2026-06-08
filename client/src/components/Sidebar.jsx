@@ -25,6 +25,7 @@ const NAV_GROUPS_ADMIN = [
     items: [
       { key: "staff", label: "الموظفون", icon: <StaffIcon /> },
       { key: "reports", label: "التقارير", icon: <ReportIcon /> },
+      { key: "attendance", label: "الحضور", icon: <CalIcon /> },
       { key: "archives", label: "الأرشيف", icon: <ArchiveIcon /> },
     ],
   },

@@ -33,7 +33,6 @@ const getInventory = async (req, res) => {
       .find({ isActive: true })
       .sort({ name: 1 });
 
-    // فلترة التنبيهات
     const alerts = {
       lowStock: medicines
         .filter((m) => m.isLowStock)
@@ -76,7 +75,6 @@ const getInventory = async (req, res) => {
 };
 
 // @route PUT /api/pharmacy/inventory/restock/:id
-// تحديث الكمية (الـ staff يستقبل شحنة جديدة)
 const restockMedicine = async (req, res) => {
   try {
     const { id } = req.params;
@@ -126,7 +124,6 @@ const restockMedicine = async (req, res) => {
 };
 
 // @route GET /api/pharmacy/inventory/alerts
-// تنبيهات المخزون فقط (مش كل الأدوية)
 const getStockAlerts = async (req, res) => {
   try {
     const medicines = await medicineModel.find({ isActive: true });
@@ -154,7 +151,7 @@ const getStockAlerts = async (req, res) => {
 // ═══════════════════════════════════════════════════════
 
 // @route POST /api/pharmacy/prescription/add
-// إضافة وصفة جديدة وانتظار الصرف
+// ✅ الإصلاح: الأدوية اختيارية عند الإضافة — يكفي اسم المريض فقط
 const addPrescription = async (req, res) => {
   try {
     const {
@@ -166,33 +163,37 @@ const addPrescription = async (req, res) => {
       prescriptionImage,
     } = req.body;
 
-    if (!patientName || !medicines || medicines.length === 0) {
+    if (!patientName) {
       return res.status(400).json({
         success: false,
-        message: "Patient name and medicines are required",
+        message: "Patient name is required",
       });
     }
 
-    // تأكيد إن الأدوية موجودة في الداتابيز
-    const medicineIds = medicines.map((m) => m.medicineId);
-    const foundMedicines = await medicineModel.find({
-      _id: { $in: medicineIds },
-      isActive: true,
-    });
+    // بناء قائمة الأدوية (فارغة لو مفيش)
+    const medicinesWithNames = [];
 
-    if (foundMedicines.length !== medicineIds.length) {
-      return res
-        .status(400)
-        .json({ success: false, message: "One or more medicines not found" });
+    if (medicines && medicines.length > 0) {
+      const medicineIds = medicines.map((m) => m.medicineId);
+      const foundMedicines = await medicineModel.find({
+        _id: { $in: medicineIds },
+        isActive: true,
+      });
+
+      if (foundMedicines.length !== medicineIds.length) {
+        return res.status(400).json({
+          success: false,
+          message: "One or more medicines not found",
+        });
+      }
+
+      medicines.forEach((m) => {
+        const found = foundMedicines.find(
+          (f) => f._id.toString() === m.medicineId,
+        );
+        medicinesWithNames.push({ ...m, medicineName: found?.name || "" });
+      });
     }
-
-    // ضيف snapshot للاسم
-    const medicinesWithNames = medicines.map((m) => {
-      const found = foundMedicines.find(
-        (f) => f._id.toString() === m.medicineId,
-      );
-      return { ...m, medicineName: found?.name || "" };
-    });
 
     const prescription = await prescriptionModel.create({
       patientName,
@@ -223,7 +224,6 @@ const addPrescription = async (req, res) => {
 };
 
 // @route PUT /api/pharmacy/prescription/dispense/:id
-// صرف الوصفة — بيخصم من المخزون تلقائياً
 const dispensePrescription = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -310,10 +310,9 @@ const dispensePrescription = async (req, res) => {
 };
 
 // @route GET /api/pharmacy/prescriptions
-// عرض الوصفات (فلترة بالحالة)
 const getPrescriptions = async (req, res) => {
   try {
-    const { status } = req.query; // pending | dispensed | rejected
+    const { status } = req.query;
     const filter = status ? { status } : {};
 
     const prescriptions = await prescriptionModel
@@ -351,10 +350,7 @@ const rejectPrescription = async (req, res) => {
     await log(
       req.staff,
       "REJECT_PRESCRIPTION",
-      {
-        prescriptionId: id,
-        reason,
-      },
+      { prescriptionId: id, reason },
       req.ip,
     );
 
@@ -372,7 +368,6 @@ const rejectPrescription = async (req, res) => {
 // ═══════════════════════════════════════════════════════
 
 // @route POST /api/pharmacy/sale
-// بيع مباشر (من غير وصفة أو مع وصفة)
 const makeSale = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -384,7 +379,6 @@ const makeSale = async (req, res) => {
       patientName,
       prescriptionId,
       notes,
-      // بيانات التأمين
       insuranceCompany,
       insuranceCardNumber,
       discountPercent,
@@ -439,7 +433,6 @@ const makeSale = async (req, res) => {
         subtotal,
       });
 
-      // خصم من المخزون
       await medicineModel.findByIdAndUpdate(
         medicine._id,
         {
@@ -450,7 +443,6 @@ const makeSale = async (req, res) => {
       );
     }
 
-    // حساب المبلغ النهائي — لو تأمين اطرح الخصم
     const isInsurance = paymentMethod === "insurance" && discountPercent > 0;
     const appliedDiscount = isInsurance
       ? parseFloat(discountAmount) || rawTotal * (discountPercent / 100)
@@ -467,7 +459,6 @@ const makeSale = async (req, res) => {
           prescriptionId: prescriptionId || null,
           servedBy: req.staff._id || "000000000000000000000000",
           notes,
-          // حفظ بيانات التأمين في السجل
           ...(isInsurance && {
             insuranceCompany,
             insuranceCardNumber,
@@ -506,7 +497,6 @@ const makeSale = async (req, res) => {
 };
 
 // @route GET /api/pharmacy/sales
-// عرض المبيعات (فلترة بالتاريخ)
 const getSales = async (req, res) => {
   try {
     const { from, to, staffId } = req.query;
@@ -517,7 +507,7 @@ const getSales = async (req, res) => {
       if (from) filter.createdAt.$gte = new Date(from);
       if (to) filter.createdAt.$lte = new Date(to);
     }
-    // الـ staff العادي يشوف مبيعاته بس — الـ admin يشوف الكل
+
     if (req.staff.role !== "admin") {
       filter.servedBy = req.staff._id;
     } else if (staffId) {
@@ -540,7 +530,6 @@ const getSales = async (req, res) => {
 };
 
 // @route GET /api/pharmacy/sales/summary
-// ملخص مبيعات اليوم للـ staff
 const getSalesSummary = async (req, res) => {
   try {
     const startOfDay = new Date();
