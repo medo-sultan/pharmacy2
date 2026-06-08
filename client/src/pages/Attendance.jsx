@@ -32,7 +32,9 @@ export default function Attendance() {
 
   useEffect(() => {
     if (!isAdmin && records.length > 0) {
-      const today = new Date().toLocaleDateString("en-CA");
+      const today = new Date().toLocaleDateString("en-CA", {
+        timeZone: "Asia/Riyadh",
+      });
       const todayRecord = records.find((r) => r.date === today);
       if (!todayRecord) setMyStatus(null);
       else if (todayRecord.clockOut) setMyStatus("out");
