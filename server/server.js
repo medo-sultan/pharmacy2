@@ -17,9 +17,6 @@ const { default: attendanceRouter } =
 
 connectCloudinary();
 
-// ── Middleware: ضمان اتصال DB قبل أي request ──────────────
-// ده الحل الأساسي على Vercel Serverless
-// ── CORS & body parsing أولاً — قبل أي middleware تاني ──
 app.use(
   cors({
     origin: "*",

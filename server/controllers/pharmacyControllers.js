@@ -25,7 +25,6 @@ const log = async (staff, action, details = {}, ip = "") => {
 //  المخزون — Inventory
 // ═══════════════════════════════════════════════════════
 
-// @route GET /api/pharmacy/inventory
 // عرض كل الأدوية مع حالة المخزون
 const getInventory = async (req, res) => {
   try {
